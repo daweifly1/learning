@@ -1,0 +1,104 @@
+DBLE
+
+
+1.dble配置文件基础
+
+配置文档列表以及相关对应功能
+rule.xml:分片规则定义
+schema.xml:具体分片定义，规定table和schema以及dataNode之间的关系，指定每个表格使用哪种类型的分片方法，定义每个dataNode的连接信息等
+server.xml:dble server相关参数定义，包括dble性能，定时任务，端口，用户配置等
+wrapper.conf：wrapper配置文件，配置有JVM虚拟机等参数
+log4j.xml：log4j2.xml，配置日志参数
+cache配置：配置缓存参数
+全局序列：全局序列相关配置
+myid.properties：集群相关配置
+自定义拆分算法
+重要日志及文件：
+/logs/wrapper.log：启动日志，如果dble启动失败，将会有日志出现在这个文件中
+/logs/dble.log：dble日志，日志记录并反馈dble执行过程中的重要信息
+配置文件变更记录：
+配置文件变更记录
+
+1.1 rule.xml
+1.1.1 相关文件
+这部分与rule.dtd和rule.xml相关。
+
+在2.18.12.0之后的版本中rule.xml在文件头中添加了version属性，以供运维人员区分配置创建或修改的版本
+
+rule.dtd定义解析规则，仅与开发相关。如有疑问，请参看xml_dtd_intro。
+
+rule.xml定义实际用到的分区算法的配置，它包括如下两类信息：
+
+
+<table name="tb"  dataNode="dn1,dn2" rule="sharding-by-mod2"   primaryKey="id" autoIncrement="true"/>
+
+
+
+
+
+
+
+
+
+#docker 安装mysql8
+
+docker pull mysql
+docker run -d -v /home/docker-mysql/:/var/lib/mysql -p 3306:3306 --name parts -e MYSQL_ROOT_PASSWORD=123456 mysql
+
+
+docker exec -it parts /bin/bash
+
+
+update mysql.user set host='%' where user='root';
+
+ALTER USER 'root'@'%' IDENTIFIED BY '123456' PASSWORD EXPIRE NEVER;
+
+ALTER USER 'root'@'%' IDENTIFIED WITH mysql_native_password BY '123456';
+
+grant all privileges on *.* to 'root'@'%' with grant option;
+flush privileges;
+
+
+#创建账户
+create user 'root'@'10.3.1.33' identified by  '123456';
+
+#赋予权限，with grant option这个选项表示该用户可以将自己拥有的权限授权给别人
+grant all privileges on *.* to 'root'@'10.3.1.33' with grant option;
+
+#改密码&授权超用户，flush privileges 命令本质上的作用是将当前user和privilige表中的用户信息/权限设置从mysql库(MySQL数据库的内置库)中提取到内存里
+flush privileges;
+
+#创建用户给指定库的所有权限
+create user 'mall'@'%' identified by  '123456';
+
+update mysql.user set host='%' where user='mall';
+ALTER USER 'mall'@'%' IDENTIFIED BY '123456' PASSWORD EXPIRE NEVER;
+
+ALTER USER 'mall'@'%' IDENTIFIED WITH mysql_native_password BY '123456';
+grant all privileges on parts_rm.* to 'mall'@'%' with grant option;
+flush privileges;
+
+grant select,insert,update,delete on ucenter.* to 'mall'@'%'  with grant option;
+flush privileges;
+
+#创建用户只给查询权限（可以提供给仅查询数据使用）
+create user 'readmall'@'%' identified by  '123456';
+update mysql.user set host='%' where user='readmall';
+ALTER USER 'readmall'@'%' IDENTIFIED BY '123456' PASSWORD EXPIRE NEVER;
+
+ALTER USER 'readmall'@'%' IDENTIFIED WITH mysql_native_password BY '123456';
+grant select on parts_rm.* to 'readmall'@'%'  with grant option;
+flush privileges;
+
+#创建用户只给查询，新增，编辑删除权限(推荐程序中使用)
+create user 'onlinemall'@'%' IDENTIFIED WITH mysql_native_password BY '123456';
+update mysql.user set host='%' where user='onlinemall';
+grant select,insert,update,delete on parts_rm.* to 'onlinemall'@'%'  with grant option;
+flush privileges;
+
+grant select,insert,update,delete on ucenter.* to 'onlinemall'@'%'  with grant option;
+flush privileges;
+
+#大权限，不推荐使用
+grant select,delete,update,create,drop on *.* to 'mall'@'%' with grant option;
+

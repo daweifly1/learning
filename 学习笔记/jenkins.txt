@@ -1,0 +1,349 @@
+
+卸载k8s
+kubeadm reset -f
+modprobe -r ipip
+lsmod
+rm -rf ~/.kube/
+rm -rf /etc/kubernetes/
+rm -rf /etc/systemd/system/kubelet.service.d
+rm -rf /etc/systemd/system/kubelet.service
+rm -rf /usr/bin/kube*
+rm -rf /etc/cni
+rm -rf /opt/cni
+rm -rf /var/lib/etcd
+rm -rf /var/etcd
+
+卸载docker
+yum remove docker \
+                  docker-client \
+                  docker-client-latest \
+                  docker-common \
+                  docker-latest \
+                  docker-latest-logrotate \
+                  docker-logrotate \
+                  docker-selinux \
+                  docker-engine-selinux \
+                  docker-engine
+
+rm -rf /etc/systemd/system/docker.service.d
+
+rm -rf /var/lib/docker
+
+rm -rf /var/run/docker
+
+yum list installed | grep docker
+
+docker-engine.x86_64                 17.03.0.ce-1.el7.centos         @dockerrepo
+
+2.删除安装的软件包
+
+yum -y remove docker-engine.x86_64
+
+3.删除镜像/容器等
+
+rm -rf /var/lib/docker
+
+
+yum install -y kubelet-1.9.7-0 kubeadm-1.9.7-0 kubectl-1.9.7-0
+
+yum list installed | grep kubelet
+
+
+
+
+
+
+yum install -y kubelet-1.12.0-0 kubeadm-1.12.0-0 kubectl-1.12.0-0  kubernetes-cni-0.6.0
+
+kubeadm config images list
+
+
+k8s.gcr.io/kube-apiserver:v1.12.0
+k8s.gcr.io/kube-controller-manager:v1.12.0
+k8s.gcr.io/kube-scheduler:v1.12.0
+k8s.gcr.io/kube-proxy:v1.12.0
+k8s.gcr.io/pause:3.1
+k8s.gcr.io/etcd:3.2.24
+k8s.gcr.io/coredns:1.2.2
+
+
+vi k8s.sh
+
+#!/bin/bash
+images=(kube-apiserver-amd64:v1.12.0 kube-controller-manager-amd64:v1.12.0 kube-scheduler-amd64:v1.12.0 kube-proxy-amd64:v1.12.0 pause-amd64:3.1 etcd-amd64:3.2.24)
+for imageName in ${images[@]} ; do
+  docker pull mirrorgooglecontainers/$imageName
+  docker tag  mirrorgooglecontainers/$imageName k8s.gcr.io/$imageName
+  docker rmi  mirrorgooglecontainers/$imageName
+done
+docker pull coredns/coredns:1.2.2
+docker tag coredns/coredns:1.2.2 k8s.gcr.io/coredns:1.2.2
+docker rmi coredns/coredns:1.2.2
+
+
+
+
+kubeadm init   --kubernetes-version=v1.12.0   --pod-network-cidr=10.244.0.0/16   --apiserver-advertise-address=192.168.99.102 --token-ttl 0
+
+
+
+kubeadm init --kubernetes-version=v1.12.0 --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=192.168.99.102 --ignore-preflight-errors=Swap --image-repository=mirrorgooglecontainers
+
+
+
+则设置no_proxy 
+使用命令
+
+vi /etc/profile
+1
+在最后添加
+
+export no_proxy='anjia0532,127.0.0.1,192.168.11.90,k8s.gcr.io,10.96.0.0/12,10.244.0.0/16'
+1
+使用命令让配置生效
+
+source /etc/profile
+1
+更多init的错误可以新开一个控制台使用命令跟踪:
+
+journalctl -f -u kubelet.service
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+k8s安装
+
+1.vm安装两个docker虚拟机
+2.docker info             Cgroup Driver: cgroupfs
+
+
+
+
+192.168.99.102 master-1
+192.168.99.103 node-1
+192.168.99.104 node-2
+
+
+
+systemctl disable firewalld
+systemctl stop firewalld
+setenforce 0
+
+
+cat >> /etc/yum.repos.d/kubernetes.repo << EOF
+[kubernetes]
+name=Kubernetes
+baseurl=https://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64/
+enabled=1
+gpgcheck=0
+EOF
+
+
+安装kubernetes
+yum install -y docker kubelet-1.11.0-0 kubeadm-1.11.0-0 kubectl-1.11.0-0  kubernetes-cni-0.6.0
+
+4、开启服务
+systemctl enable docker && systemctl start docker
+systemctl enable kubelet && systemctl start kubelet
+
+5、docker镜像加速
+sudo mkdir -p /etc/docker
+sudo tee /etc/docker/daemon.json <<-'EOF'
+{
+  "registry-mirrors": ["https://43jugwwr.mirror.aliyuncs.com"]
+}
+EOF
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+
+
+
+6、下载镜像
+vi my.sh
+
+#!/bin/bash
+images=(kube-proxy-amd64:v1.11.0 kube-scheduler-amd64:v1.11.0 kube-controller-manager-amd64:v1.11.0 kube-apiserver-amd64:v1.11.0
+etcd-amd64:3.2.18 pause-amd64:3.1 kubernetes-dashboard-amd64:v1.8.3 k8s-dns-sidecar-amd64:1.14.8 k8s-dns-kube-dns-amd64:1.14.8
+k8s-dns-dnsmasq-nanny-amd64:1.14.8 coredns:1.1.3)
+for imageName in ${images[@]} ; do
+  docker pull keveon/$imageName
+  docker tag keveon/$imageName k8s.gcr.io/$imageName
+  docker rmi keveon/$imageName
+done
+docker tag  k8s.gcr.io/pause-amd64:3.1 k8s.gcr.io/pause:3.1
+
+
+
+
+
+
+
+
+
+
+
+
+
+#!/bin/bash
+images=(kube-apiserver:v1.14.1  kube-controller-manager:v1.14.1  kube-scheduler:v1.14.1 kube-proxy:v1.14.1 etcd:3.3.10 coredns:1.3.1)
+for imageName in ${images[@]} ; do
+
+  docker pull registry.docker-cn.com/$imageName
+  docker tag  registry.docker-cn.com/$imageName k8s.gcr.io/$imageName
+  docker rmi registry.docker-cn.com/$imageName
+done
+docker tag  k8s.gcr.io/pause-amd64:3.1 k8s.gcr.io/pause:3.1
+
+
+
+
+
+
+
+
+
+#下载镜像
+images=(kube-proxy-amd64:v1.11.0 kube-scheduler-amd64:v1.11.0 kube-controller-manager-amd64:v1.11.0 kube-apiserver-amd64:v1.11.0
+etcd-amd64:3.2.18 pause-amd64:3.1 kubernetes-dashboard-amd64:v1.8.3 k8s-dns-sidecar-amd64:1.14.8 k8s-dns-kube-dns-amd64:1.14.8
+k8s-dns-dnsmasq-nanny-amd64:1.14.8 coredns:1.1.3)
+for imageName in ${images[@]} ; do
+  docker pull keveon/$imageName
+  docker tag keveon/$imageName k8s.gcr.io/$imageName
+  docker rmi keveon/$imageName
+done
+docker tag  k8s.gcr.io/pause-amd64:3.1 k8s.gcr.io/pause:3.1
+
+
+
+
+chmod 777 my.sh
+./my.sh
+
+7、设置内核参数和禁用swap等
+sysctl net.bridge.bridge-nf-call-iptables=1
+sysctl net.bridge.bridge-nf-call-ip6tables=1
+sudo swapoff -a
+
+??
+rm -rf /var/lib/etcd/
+
+
+拷贝虚拟机做node
+
+
+8、初始化master
+kubeadm init --pod-network-cidr=10.244.0.0/16 --kubernetes-version=v1.11.0 --ignore-preflight-errors=all
+
+kubeadm init --pod-network-cidr=10.244.0.0/16  --ignore-preflight-errors=all
+
+此步骤发生错误做如下处理
+(
+swapoff -a
+echo "1" >/proc/sys/net/bridge/bridge-nf-call-iptables
+
+失败后重新执行前
+sed -i "s/cgroup-driver=systemd/cgroup-driver=cgroupfs/g" /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+
+
+ vi /etc/systemd/system/kubelet.service.d/10-kubeadm.conf
+
+Environment="KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf --require-kubeconfig=true --cgroup-driver=systemd"
+Environment="KUBELET_CONFIG_ARGS=--config=/var/lib/kubelet/config.yaml"
+# This is a file that "kubeadm init" and "kubeadm join" generates at runtime, populating the KUBELET_KUBEADM_ARGS variable dynamically
+EnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env
+# This is a file that the user can use for overrides of the kubelet args as a last resort. Preferably, the user should use
+# the .NodeRegistration.KubeletExtraArgs object in the configuration files instead. KUBELET_EXTRA_ARGS should be sourced from this file.
+EnvironmentFile=-/etc/sysconfig/kubelet
+ExecStart=
+ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS
+
+
+
+kubeadm reset
+)
+
+9、执行初始化cluster
+
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+10、cluster机器安装网络（这里我们选择flannel方案，希望使用其他网络支持的小伙伴可以另行选择）
+
+kubectl create -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+
+
+
+
+
+
+
+以下是安装genkins的实例
+sudo docker run -d -p 8080:8080 -p 50000:50000 --name jenkins -u root -v /c/Users/xcit/share/jenkins:/var/jenkins_home  jenkinsci/jenkins
+
+de83331717904300ae9c7fb6d95843a6
+
+
+java -jar jenkins.war --httpPort=8080
+
+24deecb3df65491499d866bcc4c3e669(109环境)
+
+
+
+
+
+把：http://updates.jenkins-ci.org/update-center.json
+
+换成：http://mirror.esuni.jp/jenkins/updates/update-center.json
+
+镜像地址查询：
+http://mirrors.jenkins-ci.org/status.html
+
+
+docker 退出
+如果要正常退出不关闭容器，请按Ctrl+P+Q进行退出容器
+如果使用exit退出，那么在退出之后会关闭容器，可以使用下面的流程进行恢复
+进入
+docker exec -it 8336 /bin/bash
+
+
+
+
+
+
+// 安装最新版本的Jenkins
+sudo wget -O /etc/yum.repos.d/jenkins.repo http://pkg.jenkins-ci.org/redhat/jenkins.repo
+sudo rpm --import https://jenkins-ci.org/redhat/jenkins-ci.org.key
+sudo yum install jenkins
+  下面是Jenkins的启动和关闭等命令：
+
+    sudo service jenkins start | stop | restart
+
+    sudo chkconfig jenkins on    
+
+    安装完成后：
+
+    /usr/lib/jenkins/jenkens.war             // Jenkins项目
+

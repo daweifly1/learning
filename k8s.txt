@@ -1,0 +1,530 @@
+
+
+环境：vmbox CentOS-7-x86_64-Minimal-1810(master 2G 3C，node:1G 2C)
+
+k8s安装步骤
+
+步骤 1-7所有节点执行(此时可以cp虚拟机)，8-9 主节点执行，10 子节点执行，11 主节点执行
+
+
+1、安装基本服务
+
+yum install -y net-tools epel-release 
+yum install -y vim  yum-utils device-mapper-persistent-data lvm2
+
+
+2、配置docker-ce 和 k8s yum 源
+
+yum-config-manager  --add-repo  http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
+ 
+cat <<EOF > /etc/yum.repos.d/kubernetes.repo
+[kubernetes]
+name=Kubernetes
+baseurl=https://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64/
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg https://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg
+EOF
+
+
+3、防火墙和Selinux
+
+sudo systemctl stop firewalld.service  
+sudo systemctl disable firewalld.service
+sudo firewall-cmd --state
+sudo setenforce 0
+
+sudo vi /etc/selinux/config
+
+#SELINUX修改为disabled
+SELINUX=disabled 
+
+
+4、安装docker-ce 和k8s （已经测试以下版本兼容，其他版本未知）
+
+sudo yum install -y --setopt=obsoletes=0 \
+  docker-ce-17.03.2.ce-1.el7.centos \
+  docker-ce-selinux-17.03.2.ce-1.el7.centos
+ 
+安装后启用docker
+systemctl enable docker
+systemctl start docker
+重启docker测试
+sudo systemctl restart docker
+
+安装k8s
+yum install -y kubectl-1.13.0 kubelet-1.13.0  kubeadm-1.13.0 kubernetes-cni-0.6.0
+
+启用kubelet [安装后千万别start,直接init吧]
+systemctl enable kubelet 
+
+# 默认安装需要禁用swap，这里配置/etc/sysconfig/kubelet  忽略禁用swap
+vi /etc/sysconfig/kubelet
+KUBELET_EXTRA_ARGS="--fail-swap-on=false"
+
+关闭swap
+sudo swapoff -a
+
+5、桥接网络设置
+
+modprobe br_netfilter
+
+cat <<EOF >  /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+EOF
+sysctl -p /etc/sysctl.d/k8s.conf
+ls /proc/sys/net/bridge
+
+
+6、配置 /etc/hosts（根据实际配置，并设置主机名）
+
+添加
+vi /etc/hosts
+192.168.99.102 master
+192.168.99.100 node5  
+
+
+7、准备k8s 需要的docker 镜像（因为外网原因，不能下载镜像）-----------v1.13版本可以init时候指定仓库镜像，不需要tag-k8s.gcr.io
+
+可以先执行 kubeadm config images list 查看需要的docker images 先pull后续init会更快
+
+vi k8s.sh
+
+#!/bin/bash
+images=(kube-apiserver:v1.13.0 kube-controller-manager:v1.13.0 kube-scheduler:v1.13.0 kube-proxy:v1.13.0 pause:3.1 etcd:3.2.24)
+for imageName in ${images[@]} ; do
+  docker pull mirrorgooglecontainers/$imageName
+done
+docker pull coredns/coredns:1.2.6
+docker tag coredns/coredns:1.2.6 mirrorgooglecontainers/coredns:1.2.6
+docker rmi coredns/coredns:1.2.6
+
+sh k8s.sh
+
+# 查看
+docker images
+
+
+8、（仅主节点执行）集群初始化（请记录初始化最后打印出的kubeadm join 信息）
+---实际执行成功
+kubeadm init --kubernetes-version=v1.13.0 --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=192.168.99.102 --ignore-preflight-errors=Swap --image-repository=mirrorgooglecontainers
+
+若执行失败请reset重试，排查原因
+sudo swapoff -a
+kubeadm reset
+ 
+ 
+#复制配置
+mkdir ~/.kube
+cp -i /etc/kubernetes/admin.conf ~/.kube/config
+chown $(id -u):$(id -g) ~/.kube/config
+
+（？）
+export KUBECONFIG=/etc/kubernetes/admin.conf
+kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')"
+
+
+
+9、（仅主节点执行）配置flannel 网络（使用的镜像是quay.io/coreos/flannel:v0.10.0-amd64）
+wget https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+kubectl  apply -f kube-flannel.yml
+### kube-flannel.yml 有可能下载不下来，可以使用附件 kube-flannel.yml
+
+
+
+10、（仅子节点加入集群）子节点执行命令
+# 初始化log 中的join信息拼接上 --ignore-preflight-errors=Swap，否则会报错
+kubeadm join 192.168.99.102:6443 --token 2t14g0.p47ez7g13xuz1ljo --discovery-token-ca-cert-hash sha256:b5234f4a3b58a4be32da19261687beb210773af3b91d64811fc0a8ace48b13b8 --ignore-preflight-errors=Swap
+
+kubeadm join 192.168.99.102:6443 --token cr2pco.ioetw0xjrdh8u5pd --discovery-token-ca-cert-hash sha256:b5234f4a3b58a4be32da19261687beb210773af3b91d64811fc0a8ace48b13b8
+
+sudo swapoff -a
+kubeadm reset
+
+
+#主节点查询 Ready 说明节点加入集群正常
+kubectl get nodes
+查询pod
+kubectl get pods --all-namespaces -o wide
+查询service
+journalctl -f -u kubelet.service
+
+
+11、（仅主节点执行）dashboard 安装
+
+#为所有节点添加dashboard 镜像,因为不确定dashboard 在哪台机器上启动（此时可以尝试修改kubernetes-dashboard.yaml中的镜像源，未尝试本次该tag）
+# 所有节点执行
+kubernetes-dashboard-amd64:v1.10.1
+docker pull mirrorgooglecontainers/kubernetes-dashboard-amd64:v1.10.1
+docker tag  mirrorgooglecontainers/kubernetes-dashboard-amd64:v1.10.1 k8s.gcr.io/kubernetes-dashboard:v1.10.1
+
+
+主节点执行
+wget https://raw.githubusercontent.com/kubernetes/dashboard/master/aio/deploy/recommended/kubernetes-dashboard.yaml
+kubectl apply -f kubernetes-dashboard.yaml
+
+下载不了建附件：kubernetes-dashboard.yaml
+
+
+验证与配置（主节点执行）查看dashboard 信息，Running 说明正常
+kubectl get pods -n kube-system
+
+ 
+#创建 serviceaccount 用于登录 dashboard
+kubectl create serviceaccount dashboard-admin -n kube-system
+ 
+#创建clusterrolebinding
+kubectl create clusterrolebinding cluster-dashboard-admin --clusterrole=cluster-admin --serviceaccount=kube-system:dashboard-admin
+ 
+
+#将dashboard的service 的类型改成NodePort  ，也可以在部署dashboard的时候修改下yaml文件
+kubectl patch svc kubernetes-dashboard -p '{"spec":{"type":"NodePort"}}' -n kube-system
+ 
+
+#查看secret 的具体名字 dashboard-admin-token-xxxxx
+kubectl get secret -n kube-system
+
+### 找到下面这一行 dashboard-admin-token-xxxxx
+### dashboard-admin-token-7qzjp                       kubernetes.io/service-account-token   3      17h
+ 
+kubectl describe secret  dashboard-admin-token-lrqmj  -n kube-system
+# 复制中的token 值，登录dashboard 会用到
+
+
+# 查看dashboard 具体端口
+# 通过如下命令查到dashboard 映射的端口是32202 （不同环境会不同）
+kubectl get svc -n kube-system
+
+[root@master ~]# kubectl get svc -n kube-system
+NAME                   TYPE        CLUSTER-IP    EXTERNAL-IP   PORT(S)         AGE
+kube-dns               ClusterIP   10.96.0.10    <none>        53/UDP,53/TCP   21h
+kubernetes-dashboard   NodePort    10.97.67.49   <none>        443:32202/TCP   17h
+
+
+访问 https://192.168.99.102:32202
+# 给网页添加信任，选择令牌，粘贴之前查询到的token 值，登录（我的实验）
+
+eyJhbGciOiJSUzI1NiIsImtpZCI6IiJ9.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlLXN5c3RlbSIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJkYXNoYm9hcmQtYWRtaW4tdG9rZW4tbHJxbWoiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC5uYW1lIjoiZGFzaGJvYXJkLWFkbWluIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQudWlkIjoiNWU2NmQ3ZDQtNjIzYi0xMWU5LTlmYTktMDgwMDI3MmU5ZDcxIiwic3ViIjoic3lzdGVtOnNlcnZpY2VhY2NvdW50Omt1YmUtc3lzdGVtOmRhc2hib2FyZC1hZG1pbiJ9.O2FGbymbVQcIPb4MJ93YLovdCXnsi47OHgAvBOxG-zY7MwD27hT59_610akvAXgrokXQZKqOZeAapUIvr0kxMhau4AVicQhayYRTSovCp7oTmjVSKWHoWz0OpC32w6rz_55mA3nKBet0FnE0duyPBJDuI2mvZOGEj58m1PdhGnZL2nm98dpVJGtEBsKltTwO-JDRAsEFkXgDJ2eaa8jeUjRwx47Qr7ATk0pS1dJ-lh_GhVJ8IV6DDHRDWSSAIt4L9_08n-GgDAl9HQCo3T6fM7TGJ7oM8mSCTHDK2paVeksGd4IdlLJpoHfmNlV8PRKNk-khWXrDX5jdvScwvbYUvA
+
+
+若环境以及安装请参考以下卸载：
+
+卸载k8s
+kubeadm reset -f
+modprobe -r ipip
+lsmod
+rm -rf ~/.kube/
+rm -rf /etc/kubernetes/
+rm -rf /etc/systemd/system/kubelet.service.d
+rm -rf /etc/systemd/system/kubelet.service
+rm -rf /usr/bin/kube*
+rm -rf /etc/cni
+rm -rf /opt/cni
+rm -rf /var/lib/etcd
+rm -rf /var/etcd
+然后yum搜索卸载 
+yum list installed | grep kube  
+yum -y remove  对应的安装
+
+yum -y remove yum -y remove  kubeadm.x86_64  kubectl.x86_64  kubelet.x86_64  kubernetes-cni.x86_64
+ 
+
+卸载docker
+yum remove docker \
+                  docker-client \
+                  docker-client-latest \
+                  docker-common \
+                  docker-latest \
+                  docker-latest-logrotate \
+                  docker-logrotate \
+                  docker-selinux \
+                  docker-engine-selinux \
+                  docker-engine
+
+rm -rf /etc/systemd/system/docker.service.d
+rm -rf /var/lib/docker
+rm -rf /var/run/docker
+
+yum list installed | grep docker
+
+yum -y remove docker-engine.x86_64等
+
+若无法指定镜像源的版本请参考以下脚本pull docker镜像,并执行脚本完成镜像下载，我只尝试了v1.3.0版本的安装可以指定镜像源不需要tag-k8s.gcr.io
+vi k8s.sh
+
+#!/bin/bash
+images=(kube-apiserver-amd64:v1.13.1 kube-controller-manager-amd64:v1.13.1 kube-scheduler-amd64:v1.13.1 kube-proxy-amd64:v1.13.1 pause:3.1 etcd-amd64:3.2.24)
+for imageName in ${images[@]} ; do
+  docker pull mirrorgooglecontainers/$imageName
+  docker tag  mirrorgooglecontainers/$imageName k8s.gcr.io/$imageName
+  docker rmi  mirrorgooglecontainers/$imageName
+done
+docker pull coredns/coredns:1.2.6
+docker tag coredns/coredns:1.2.6 k8s.gcr.io/coredns:1.2.6
+docker rmi coredns/coredns:1.2.6
+
+
+
+安装节点
+192.168.99.102 master
+192.168.99.100 node5  
+
+
+常用操作
+
+查看docker运行日志
+journalctl -f -u docker
+journalctl -xe
+systemctl stop docker
+systemctl restart docker
+netstat -ntlp
+systemctl enable docker
+
+
+关闭防火墙
+sudo systemctl stop firewalld.service  
+sudo systemctl disable firewalld.service
+sudo firewall-cmd --state
+sudo setenforce 0
+
+关闭swap
+sudo swapoff -a
+
+初始kube后需要重新初始时候，reset
+kubeadm reset
+
+docker 重启
+systemctl enable docker &&systemctl start docker
+
+kube启用，切记初始化前只执行该操作不要systemctl start kubelet
+systemctl enable kubelet 
+
+kube重启
+systemctl daemon-reload && sudo systemctl restart kubelet
+
+
+k8s 相关pod启动不了处理（当前处理方式，希望能继续学习理解原理，更加熟悉）
+查看所有pod
+kubectl get pods --all-namespaces -o wide
+删除状态异常的pod重试
+kubectl delete pod  kubernetes-dashboard-57df4db6b-wskx8  -n kube-system
+
+
+"Always", "IfNotPresent", "Never" 
+
+
+
+构造删除镜像的脚本
+docker images |awk '{print "docker rmi "$1":"$2}'
+
+问题解决
+
+1.“ Error adding network: failed to set bridge addr: "cni0" already has an IP ad”
+
+在Node上执行如下操作：重置kubernetes服务，重置网络。删除网络配置，link
+
+kubeadm reset
+
+systemctl stop kubelet
+systemctl stop docker
+rm -rf /var/lib/cni/
+rm -rf /var/lib/kubelet/*
+rm -rf /etc/cni/
+ifconfig cni0 down
+ifconfig flannel.1 down
+ifconfig docker0 down
+ip link delete cni0
+ip link delete flannel.1
+
+获取master的join token
+
+kubeadm token create --print-join-command
+
+2. k8s删除资源状态一直是Terminating
+
+解决方法：
+a.可使用kubectl中的强制删除命令
+# 删除POD
+kubectl delete pod PODNAME --force --grace-period=0
+
+# 删除NAMESPACE
+kubectl delete namespace NAMESPACENAME --force --grace-period=0
+b.若以上方法无法删除，可使用第二种方法，直接从ETCD中删除源数据(这是一种最暴力的方式，我们不建议直接操作etcd中的数据，在操作前请确认知道你是在做什么。)	
+# 删除default namespace下的pod名为pod-to-be-deleted-0
+ETCDCTL_API=3 etcdctl del /registry/pods/default/pod-to-be-deleted-0
+# 删除需要删除的NAMESPACE
+etcdctl del /registry/namespaces/NAMESPACENAME</pre>
+	
+
+
+centos7 更改hostname
+hostnamectl set-hostname
+
+
+
+
+Docker Registry部署
+docker run -d -p 5000:5000  -v /usr/local/registry:/var/lib/registry  --restart=always  --name registry  registry:2.0
+
+
+
+vi /usr/lib/systemd/system/docker.service
+--insecure-registry=192.168.99.101:5000 (12行 ExecStart=/usr/bin/dockerd --insecure-registry=192.168.99.101:5000)
+
+
+ExecStart=/usr/bin/dockerd --insecure-registry=10.100.2.92:5000 --insecure-registry=192.168.99.105:5000
+
+
+systemctl daemon-reload 
+systemctl restart docker
+
+
+Docker开启远程访问
+[root@izwz9eftauv7x69f5jvi96z docker]# vim /usr/lib/systemd/system/docker.service
+#修改ExecStart这行
+ExecStart=/usr/bin/dockerd  -H tcp://0.0.0.0:2375  -H unix:///var/run/docker.sock
+#重新加载配置文件
+[root@izwz9eftauv7x69f5jvi96z docker]# systemctl daemon-reload    
+#重启服务
+[root@izwz9eftauv7x69f5jvi96z docker]# systemctl restart docker
+#查看端口是否开启
+[root@izwz9eftauv7x69f5jvi96z docker]# netstat -nlpt
+#直接curl看是否生效
+[root@izwz9eftauv7x69f5jvi96z docker]# curl http://127.0.0.1:2375/info
+
+综上我的配置为：
+ExecStart=/usr/bin/dockerd --insecure-registry 192.168.99.101:5000 -H tcp://0.0.0.0:2375 -H unix://var/run/docker.sock
+
+
+
+部署单节点 http://192.168.99.101:32181/euadmin
+git：https://github.com/daweifly1/eureka-server.git branch: master-only-eureka-k8s
+部署eureka集群，採用指定用宿主機ip
+{
+  "kind": "Deployment",
+  "apiVersion": "extensions/v1beta1",
+  "metadata": {
+    "name": "eureka-0",
+    "namespace": "default",
+    "selfLink": "/apis/extensions/v1beta1/namespaces/default/deployments/eureka-0",
+    "uid": "37d29a71-6282-11e9-9b83-0800272e9d71",
+    "resourceVersion": "53744",
+    "generation": 2,
+    "creationTimestamp": "2019-04-19T09:05:03Z",
+    "labels": {
+      "app": "eureka-0"
+    },
+    "annotations": {
+      "deployment.kubernetes.io/revision": "2"
+    }
+  },
+  "spec": {
+    "replicas": 1,
+    "selector": {
+      "matchLabels": {
+        "app": "eureka-0"
+      }
+    },
+    "template": {
+      "metadata": {
+        "creationTimestamp": null,
+        "labels": {
+          "app": "eureka-0"
+        }
+      },
+      "spec": {
+        "containers": [
+          {
+            "name": "eureka",
+            "image": "192.168.99.101:5000/eureka-cdw:last",
+            "command": [
+              "java"
+            ],
+            "args": [
+              "-jar",
+              "/app.jar",
+              "--server.port=8000",
+              "--k8s.defaultZone=http://192.168.99.100:8000/eureka,http://192.168.99.101:8001/eureka"
+            ],
+            "ports": [
+              {
+                "name": "http",
+                "hostPort": 8000,
+                "containerPort": 8000,
+                "protocol": "TCP"
+              }
+            ],
+            "resources": {},
+            "livenessProbe": {
+              "httpGet": {
+                "path": "/healthz",
+                "port": 8000,
+                "scheme": "HTTP"
+              },
+              "initialDelaySeconds": 20,
+              "timeoutSeconds": 1,
+              "periodSeconds": 10,
+              "successThreshold": 1,
+              "failureThreshold": 3
+            },
+            "readinessProbe": {
+              "httpGet": {
+                "path": "/healthz",
+                "port": 8000,
+                "scheme": "HTTP"
+              },
+              "initialDelaySeconds": 20,
+              "timeoutSeconds": 1,
+              "periodSeconds": 10,
+              "successThreshold": 1,
+              "failureThreshold": 3
+            },
+            "terminationMessagePath": "/dev/termination-log",
+            "terminationMessagePolicy": "File",
+            "imagePullPolicy": "IfNotPresent"
+          }
+        ],
+        "restartPolicy": "Always",
+        "terminationGracePeriodSeconds": 60,
+        "dnsPolicy": "ClusterFirst",
+        "nodeName": "node5",
+        "hostNetwork": true,
+        "securityContext": {},
+        "schedulerName": "default-scheduler"
+      }
+    },
+    "strategy": {
+      "type": "RollingUpdate",
+      "rollingUpdate": {
+        "maxUnavailable": 1,
+        "maxSurge": 1
+      }
+    },
+    "revisionHistoryLimit": 2147483647,
+    "progressDeadlineSeconds": 2147483647
+  },
+  "status": {
+    "observedGeneration": 2,
+    "replicas": 1,
+    "updatedReplicas": 1,
+    "readyReplicas": 1,
+    "availableReplicas": 1,
+    "conditions": [
+      {
+        "type": "Available",
+        "status": "True",
+        "lastUpdateTime": "2019-04-19T09:05:03Z",
+        "lastTransitionTime": "2019-04-19T09:05:03Z",
+        "reason": "MinimumReplicasAvailable",
+        "message": "Deployment has minimum availability."
+      }
+    ]
+  }
+}
+
+進入docker容器 sudo docker exec -it 775c7c9ee1e1 /bin/bash 
+退出docker容器： Ctrl+P+Q依然是我认为的最佳用法
+
+https://192.168.99.100:32521/#!/overview?namespace=default

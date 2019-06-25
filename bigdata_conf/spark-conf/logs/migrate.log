@@ -1,0 +1,2 @@
+[28/Jul/2016 19:35:23 ] settings     INFO     Welcome to Hue 3.7.0
+[28/Jul/2016 19:35:24 +0800] __init__     WARNING  Couldn't import snappy. Support for snappy compression disabled.

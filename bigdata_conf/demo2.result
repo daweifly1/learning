@@ -1,0 +1,17 @@
+SET hive.support.sql11.reserved.keywords=false
+SET spark.sql.hive.version=1.2.1
+SET spark.sql.hive.version=1.2.1
+spark-sql> use demo ;
+spark-sql> select * from userinfo limit 10 ;
+44-1e-a1-e5-29-fd	192.168.0.104	SearchIndexer.exe	C:\Windows\System32\SearchIndexer.exe
+44-1e-a1-e5-29-fd	192.168.0.104	atieclxx.exe	C:\Windows\System32\atieclxx.exe
+44-1e-a1-e5-29-fd	192.168.0.104	atiesrxx.exe	C:\Windows\System32\atiesrxx.exe
+44-1e-a1-e5-29-fd	192.168.0.104	conhost.exe	C:\Windows\System32\conhost.exe
+44-1e-a1-e5-29-fd	192.168.0.104	dwm.exe	C:\Windows\System32\dwm.exe
+44-1e-a1-e5-29-fd	192.168.0.104	hkcmd.exe	C:\Windows\System32\hkcmd.exe
+44-1e-a1-e5-29-fd	192.168.0.104	lsass.exe	C:\Windows\System32\lsass.exe
+44-1e-a1-e5-29-fd	192.168.0.104	sihost.exe	C:\Windows\System32\sihost.exe
+44-1e-a1-e5-29-fd	192.168.0.104	spoolsv.exe	C:\Windows\System32\spoolsv.exe
+44-1e-a1-e5-29-fd	192.168.0.104	svchost.exe	C:\Windows\System32\svchost.exe
+spark-sql> exit
+         > 

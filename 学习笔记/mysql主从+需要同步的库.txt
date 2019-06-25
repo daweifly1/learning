@@ -1,0 +1,169 @@
+
+同步的内容加库
+
+1.分别停止master slave
+/etc/init.d/mysql stop
+
+
+
+2.修改master的my.cnf文件
+vi /etc/my.cnf
+
+[mysqld]
+log-bin=mysql-bin
+server-id=1
+binlog-do-db=cmdb
+binlog-do-db=cmdb1
+binlog-do-db=cmdb2
+binlog-ignore-db=mysql
+binlog-ignore-db=information_schema
+binlog-ignore-db=performance_schema
+binlog-ignore-db=sys
+#binlog_format=MIXED
+#slave_skip_errors=1062
+
+
+修改slave的my.cnf文件
+vi /etc/my.cnf
+
+[mysqld]
+log-bin=mysql-bin
+server-id=3
+binlog-ignore-db=information_schema
+binlog-ignore-db=cluster
+binlog-ignore-db=mysql
+replicate-do-db=cmdb
+replicate-do-db=cmdb1
+replicate-do-db=cmdb2
+replicate-ignore-db=mysql
+log-slave-updates
+slave-skip-errors=all
+slave-net-timeout=60
+
+
+3.分别启动master slave
+/etc/init.d/mysql start
+
+4.验证，正确
+
+
+其他操作
+?将主库备份导入从库
+mysqldump -uroot -p123456 -hlocalhost cmdb1 > /opt/cmdb1.bak
+mysqldump -uroot -p123456 -hlocalhost cmdb2 > /opt/cmdb2.bak
+scp /opt/cmdb1.bak root@192.168.99.101:/data/
+scp /opt/cmdb2.bak root@192.168.99.101:/data/
+
+flush tables with read lock;
+unlock tables
+
+
+
+
+
+
+
+
+
+mysql 主从多线程复制
+
+1.从库上使用 show processlist 查看线程
+
+2.停止从库复制，stop slave;
+
+3.设置并发同步类型为逻辑时钟方式
+
+先看下现在 slave 的并发类型，通过变量 slave_parallel_type 的值来获得，这个变量用来决定如何使用多线程复制
+mysql> show variables like 'slave_parallel_type';
+
+默认是datebase，每个线程只能处理一个数据库
+
+配置成基于逻辑时钟的方式
+
+mysql> set global slave_parallel_type='logical_clock';
+
+4、设置复制线程的数量
+先看下当前的并发数量，通过变量 slave_parallel_workers 的值来获得，这个变量用来决定并发处理的线程数
+
+mysql> show variables like 'slave_parallel_workers';
+
+现在是 0，我们把他改成 4
+
+mysql> set global slave_parallel_workers=4;
+
+5、启动复制
+
+mysql> start slave;
+
+6、验证配置结果
+
+mysql> show processlist;
+
+
+
+
+Mysql 读写分离中间件 MaxScale
+
+
+
+
+
+
+
+
+LINUX java8 安装（固定目录，方便管理）
+tar -zxvf jdk-8u191-linux-x64.tar.gz
+
+mv jdk1.8.0_191/  /usr/local/jdk1.8
+
+
+vi /etc/profile
+
+最后添加：
+export JAVA_HOME=/usr/local/jdk1.8
+export JAVA_BIN=/usr/local/jdk1.8/bin
+export PATH=$PATH:$JAVA_HOME/bin
+export CLASSPATH=:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar
+export JAVA_HOME JAVA_BIN PATH CLASSPATHSPH
+
+source /etc/profile
+
+
+
+./dble/bin/dble start
+
+
+
+
+
+
+
+
+
+
+
+Cobar:
+阿里巴巴B2B开发的关系型分布式系统，管理将近3000个MySQL实例。 在阿里经受住了考验，后面由于作者的走开的原因cobar没有人维护 了，阿里也开发了tddl替代cobar。
+
+MyCAT:
+社区爱好者在阿里cobar基础上进行二次开发，解决了cobar当时存 在的一些问题，并且加入了许多新的功能在其中。目前MyCAT社区活 跃度很高，目前已经有一些公司在使用MyCAT。总体来说支持度比 较高，也会一直维护下去，
+
+DBLE:
+
+
+OneProxy:
+数据库界大牛，前支付宝数据库团队领导楼总开发，基于mysql官方 的proxy思想利用c进行开发的，OneProxy是一款商业收费的中间件， 楼总舍去了一些功能点，专注在性能和稳定性上。有朋友测试过说在 高并发下很稳定。
+
+Vitess:
+这个中间件是Youtube生产在使用的，但是架构很复杂。 与以往中间件不同，使用Vitess应用改动比较大要 使用他提供语言的API接口，我们可以借鉴他其中的一些设计思想。
+
+Kingshard:
+Kingshard是前360Atlas中间件开发团队的陈菲利用业务时间 用go语言开发的，目前参与开发的人员有3个左右， 目前来看还不是成熟可以使用的产品，需要在不断完善。
+
+Atlas:
+360团队基于mysql proxy 把lua用C改写。原有版本是支持分表， 目前已经放出了分库分表版本。在网上看到一些朋友经常说在高并 发下会经常挂掉，如果大家要使用需要提前做好测试。
+
+MaxScale与MySQL Route:
+这两个中间件都算是官方的吧，MaxScale是mariadb (MySQL原作者维护的一个版本)研发的，目前版本不支持分库分表。
+
+MySQL Route是现在MySQL 官方Oracle公司发布出来的一个中间件。

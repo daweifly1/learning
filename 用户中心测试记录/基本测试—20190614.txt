@@ -1,0 +1,244 @@
+
+
+1、/auth/authInfo
+   获取验证码对应的key
+{
+  "message": "操作成功",
+  "data": {
+    "username": null,
+    "password": null,
+    "code": null,
+    "authId": "a9356472-8ba8-4379-ab60-be9aaf2b7052",
+    "pswType": null
+  },
+  "status": 0,
+  "timestamp": "2019-06-14T02:06:40.491+0000"
+}
+
+
+2./auth/kaptcha
+  获取验证码，输入 "authId": "a9356472-8ba8-4379-ab60-be9aaf2b7052",
+  验证码：24f5
+  
+3./auth/regist
+  注册用户
+入参  
+{
+  "sysAccountVO": {
+    "areaCode": "",
+    "createdBy": 1,
+    "createdTime": "2019-06-14T02:09:31.526Z",
+    "delFlag": 0,
+    "email": "703350556@qq.com",
+    "icon": "",
+    "id": 0,
+    "idNumber": "320324198810031111",
+    "lastLoginIp": "",
+    "locked": 0,
+    "mobile": "18952240191",
+    "name": "管理员",
+    "nickname": "沙漠渔夫",
+    "remark": "",
+    "roles": [
+      {
+        "id": 1,
+		"platformId":1
+      }
+    ],
+    "sex": 0,
+    "status": 0,
+    "telephone": "18952240191",
+    "username": "admin"
+  },
+  "userLoginVO": {
+    "authId": "3a8d2238-68c1-4c6d-9239-4ac485f7fd04",
+    "code": "enfn",
+    "password": "admin",
+    "pswType": 0,
+    "username": "admin"
+  }
+}
+
+结果：
+{
+  "message": "操作成功",
+  "data": "注册成功",
+  "status": 0,
+  "timestamp": "2019-06-14T02:21:47.307+0000"
+}
+
+同理在注册个用户，sysadmin，开始不输入验证码发现错误，注册时候必须要输入验证码
+
+{
+  "sysAccountVO": {
+    "areaCode": "",
+    "createdBy": 1,
+    "createdTime": "2019-06-14T02:09:31.526Z",
+    "delFlag": 0,
+    "email": "703350556@qq.com",
+    "icon": "",
+    "id": 0,
+    "idNumber": "320324198810031111",
+    "lastLoginIp": "",
+    "locked": 0,
+    "mobile": "18952240191",
+    "name": "系统管理员",
+    "nickname": "艾水水",
+    "remark": "",
+    "roles": [
+      {
+        "id": 1,
+		"platformId":1
+      }
+    ],
+    "sex": 0,
+    "status": 0,
+    "telephone": "18952240191",
+    "username": "sysadmin"
+  },
+  "userLoginVO": {
+    "authId": "b23acaeb-6448-409e-886b-c2bac67fbee8",
+    "code": "e4pb",
+    "password": "sysadmin",
+    "pswType": 0,
+    "username": "sysadmin"
+  }
+}
+
+
+4.
+用手机获取动态密码
+
+入参
+
+
+{
+  "authId": "69266660-21f8-4ee7-be1b-0c4ec26d17bd",
+  "code": "73n4",
+  "password": "",
+  "pswType": 0,
+  "username": "admin"
+}
+
+EQdEee
+
+
+
+
+
+{
+  "authId": "",
+  "code": "",
+  "password": "EQdEee",
+  "pswType": 0,
+  "username": "admin"
+}
+
+
+5.
+登录用户1
+
+{
+  "authId": "",
+  "code": "",
+  "password": "admin",
+  "pswType": 0,
+  "username": "admin"
+}
+
+结果：
+{
+  "message": "操作成功",
+  "data": {
+    "id": 3,
+    "username": "admin",
+    "name": "管理员",
+    "roleIds": [
+      1
+    ]
+  },
+  "status": 0,
+  "timestamp": "2019-06-14T03:39:11.285+0000"
+}
+
+{
+  "authId": "270f7a4b-c65f-49f3-b521-55419c5903c1",
+  "code": "42bb",
+  "password": "admin",
+  "pswType": 0,
+  "username": "admin"
+}
+
+根据短信动态密码登录
+{
+  "password": "Bi0WoM",
+  "pswType": 2,
+  "username": "admin"
+}
+
+
+
+
+有人可以解释什么时候重写configure(HttpSecurity)，配置(WebSecurity)和配置(AuthenticationManagerBuilder)？
+configure(AuthenticationManagerBuilder)用于通过允许AuthenticationProvider容易地添加来建立认证机制。以下定义了内置认证与内置的“用户”和“管理”登录。
+AuthenticationManagerBuilder allows 
+    public void configure(AuthenticationManagerBuilder auth) {
+        auth
+            .inMemoryAuthentication()
+            .withUser("user")
+            .password("password")
+            .roles("USER")
+        .and()
+            .withUser("admin")
+            .password("password")
+            .roles("ADMIN","USER");
+}
+configure(HttpSecurity)允许基于选择匹配在资源级配置基于网络的安全性。以下示例将以/ admin /开头的网址限制为具有ADMIN角色的用户，并声明任何其他网址需要成功验证。
+
+protected void configure(HttpSecurity http) throws Exception {
+    http
+        .authorizeUrls()
+        .antMatchers("/admin/**").hasRole("ADMIN")
+        .anyRequest().authenticated()
+}
+configure(WebSecurity)用于影响全局安全性(配置资源，设置调试模式，通过实现自定义防火墙定义拒绝请求)的配置设置。例如，以下方法将导致以/ resources /开头的任何请求被忽略以用于认证目的。
+
+public void configure(WebSecurity web) throws Exception {
+    web
+        .ignoring()
+        .antMatchers("/resources/**");
+}
+
+
+
+http://127.0.0.1:9000/login
+
+
+http://127.0.0.1:9000/ius/auth/authInfo
+
+
+
+
+
+
+
+
+
+
+
+
+curl -X POST \
+  http://10.3.1.33:9000/ius/auth/login \
+  -H 'cache-control: no-cache' \
+  -H 'content-type: application/json' \
+  -H 'postman-token: c5e70bcc-f5bc-f684-f7af-484246c1a631' \
+  -d '{
+  "password": "admin",
+  "pswType": 0,
+  "username": "admin"
+}'
+
+
+String new_url = "http://www.oschina.net/";
+String html = "<script type='text/javascript'>location.href='"+new_url+"';</script>";
+response.getWriter().print(html);

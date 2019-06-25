@@ -1,0 +1,258 @@
+
+
+docker tag coredns/coredns:1.2.6 mirrorgooglecontainers/coredns:1.2.6
+
+
+rancher 部署
+
+1.镜像下载，传输到私服
+192.168.99.101:5000/rancher/server
+
+docker push 192.168.99.101:5000/rancher/server
+
+docker pull 192.168.99.101:5000/rancher/server
+
+2.在docker的基础上启动rancher服务器
+docker run -d --restart=always -p 8080:8080 192.168.99.101:5000/rancher/server
+sudo docker run --rm --privileged -v /var/run/docker.sock:/var/run/docker.sock -v /var/lib/rancher:/var/lib/rancher 192.168.99.101:5000/rancher/agent:v1.2.11 http://192.168.99.102:8080/v1/scripts/8887773CFD3CBA5203A5:1546214400000:BvYBZAhVr7dwMqIyMC5jIgCzz8
+
+docker pull  3laho3y3.mirror.aliyuncs.com/rancher/agent:v1.2.11 (实在是难找，已经传私服)
+
+docker tag 3laho3y3.mirror.aliyuncs.com/rancher/agent:v1.2.11 192.168.99.101:5000/rancher/agent:v1.2.11
+
+
+3.
+
+sudo mkdir -p /etc/docker
+sudo tee /etc/docker/daemon.json <<-'EOF'
+{
+  "registry-mirrors": ["https://zyuznqzi.mirror.aliyuncs.com"]
+}
+EOF
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+
+
+sudo tee /etc/hosts <<-'EOF'
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+192.168.99.102 master102
+192.168.99.103 node103
+192.168.99.104 node104
+192.168.99.105 master105
+192.168.99.106 node106
+192.168.99.107 node107
+EOF
+
+
+
+
+vi /etc/docker/daemon.json
+
+rm -rf /var/run/docker.sock
+
+10.100.2.92:5000/rancher/agent:v1.2.11
+
+docker pull  3laho3y3.mirror.aliyuncs.com/rancher/scheduler:v0.8.6
+
+docker tag  3laho3y3.mirror.aliyuncs.com/rancher/scheduler:v0.8.6 192.168.99.101:5000/rancher/scheduler:v0.8.6
+
+
+docker tag  3laho3y3.mirror.aliyuncs.com/rancher/scheduler:v0.8.6 index.docker.io/rancher/scheduler:v0.8.6
+
+
+docker pull  3laho3y3.mirror.aliyuncs.com/rancher/healthcheck:v0.3.8
+
+
+
+docker tag  3laho3y3.mirror.aliyuncs.com/rancher/healthcheck:v0.3.8 index.docker.io/rancher/healthcheck:v0.3.8
+
+docker pull  3laho3y3.mirror.aliyuncs.com/rancher/net:holder
+docker tag  3laho3y3.mirror.aliyuncs.com/rancher/net:holder index.docker.io/rancher/net:holder
+docker rmi 3laho3y3.mirror.aliyuncs.com/rancher/net:holder
+
+
+安装最新稳定版本2.2.3
+
+sudo docker run -d -v /usr/local/rancher:/var/lib/rancher/ --restart=unless-stopped -p 80:80 -p 443:443 rancher/rancher:stable
+
+
+
+
+
+
+
+{
+  "registry-mirrors": ["https://zyuznqzi.mirror.aliyuncs.com"],
+  "insecure-registries":["http://10.100.2.92:5000"]
+}
+
+
+vi /usr/lib/systemd/system/docker.service 
+
+
+
+Error response from daemon: repository  not found: does not exist or no pull access
+
+
+ExecStart=/usr/bin/dockerd --insecure-registry=10.100.2.92:5000 --insecure-registry=192.168.99.105:5000
+
+
+
+
+
+
+#删除所有容器
+sudo docker rm -f $(sudo docker ps -qa)
+
+#删除/var/etcd目录
+sudo rm -rf /var/etcd
+
+#删除/var/lib/kubelet/目录，删除前先卸载
+
+for m in $(tac /proc/mounts | awk '{print $2}'|sudo grep /var/lib/kubelet);do yum -y remove $m||true; done
+sudo rm -rf /var/lib/kubelet/
+
+#删除/var/lib/rancher/目录，删除前先卸载
+for m in $(sudo tac /proc/mounts | sudo awk '{print $2}'|sudo grep /var/lib/rancher);do
+ sudo yum -y remove $m||true
+done
+sudo rm -rf /var/lib/rancher/
+
+#删除/run/kubernetes/ 目录
+sudo rm -rf /run/kubernetes/
+
+#删除所有的数据卷
+sudo docker volume rm $(sudo docker volume ls -q)
+
+#再次显示所有的容器和数据卷，确保没有残留
+sudo docker ps -a
+sudo docker volume ls
+
+
+
+卸载k8s
+kubeadm reset -f
+modprobe -r ipip
+lsmod
+rm -rf ~/.kube/
+rm -rf /etc/kubernetes/
+rm -rf /etc/systemd/system/kubelet.service.d
+rm -rf /etc/systemd/system/kubelet.service
+rm -rf /usr/bin/kube*
+rm -rf /etc/cni
+rm -rf /opt/cni
+rm -rf /var/lib/etcd
+rm -rf /var/etcd
+然后yum搜索卸载 
+yum list installed | grep kube  
+yum -y remove  对应的安装
+
+yum -y remove  kubeadm.x86_64  kubectl.x86_64  kubelet.x86_64  kubernetes-cni.x86_64 cri-tools.x86_64
+
+
+vi /usr/lib/systemd/system/docker.service
+
+ExecStart=/usr/bin/dockerd -H tcp://0.0.0.0:2375  -H unix:///var/run/docker.sock  --insecure-registry=10.100.2.92:5000 --insecure-registry=192.168.99.105:5000
+
+
+systemctl disable docker
+systemctl enable docker
+systemctl daemon-reload
+systemctl restart docker
+docker info
+
+
+sudo docker run -d --privileged --restart=unless-stopped --net=host -v /etc/kubernetes:/etc/kubernetes -v /var/run:/var/run rancher/rancher-agent:v2.2.3 --server https://192.168.99.105 --token vvmcttlbv5z6g5qv6bgpz9q6692stn7pf2kkrk6m4rcltpwsbtnxt9 --ca-checksum a8b73cefee32c884d07d44845af7f2701f5f45dc24798c9de0b8e877fef7614b --etcd --controlplane --worker
+
+
+cd target
+sudo docker rmi 192.168.99.105:5000/jt-storage:1.0
+sudo tee Dockerfile <<-'EOF'
+FROM f00lisher/alpn-jre8-cst
+VOLUME /tmp
+WORKDIR /home
+ADD *.jar app.jar
+ENTRYPOINT ["java","-server","-Xms512m", "-Xmx512m","-Djava.security.egd=file:/dev/./urandom","-jar","app.jar" ,"--eureka.client.serviceUrl.defaultZone=http://10.100.2.109:18001/eureka/","--spring.redis.host=10.100.2.106","--spring.redis.port=6379","--spring.datasource.url=jdbc:oracle:thin:@10.100.2.110:1521:orcl"]
+EOF
+
+sudo docker build  -t 192.168.99.105:5000/jt-storage:1.0 .
+
+sudo docker push 192.168.99.105:5000/jt-storage:1.0
+
+
+
+
+
+chmod u+w /etc/sudoers
+
+
+
+systemctl daemon-reload
+systemctl restart docker
+
+
+
+10.100.2.109;10.100.2.106;10.100.2.108;192.168.99.105;192.168.99.106;192.168.99.107;10.1.1.157
+
+#docker 安装mysql8
+
+docker pull mysql
+docker run -d -v /home/docker-mysql/:/var/lib/mysql -p 3306:3306 --name parts -e MYSQL_ROOT_PASSWORD=123456 mysql
+
+
+docker exec -it parts /bin/bash
+
+
+update mysql.user set host='%' where user='root';
+
+ALTER USER 'root'@'%' IDENTIFIED BY '123456' PASSWORD EXPIRE NEVER;
+
+ALTER USER 'root'@'%' IDENTIFIED WITH mysql_native_password BY '123456';
+
+grant all privileges on *.* to 'root'@'%' with grant option;
+flush privileges;
+
+
+#创建账户
+create user 'root'@'10.3.1.33' identified by  '123456';
+
+#赋予权限，with grant option这个选项表示该用户可以将自己拥有的权限授权给别人
+grant all privileges on *.* to 'root'@'10.3.1.33' with grant option;
+
+#改密码&授权超用户，flush privileges 命令本质上的作用是将当前user和privilige表中的用户信息/权限设置从mysql库(MySQL数据库的内置库)中提取到内存里
+flush privileges;
+
+#创建用户给指定库的所有权限
+create user 'mall'@'%' identified by  '123456';
+
+update mysql.user set host='%' where user='mall';
+ALTER USER 'mall'@'%' IDENTIFIED BY '123456' PASSWORD EXPIRE NEVER;
+
+ALTER USER 'mall'@'%' IDENTIFIED WITH mysql_native_password BY '123456';
+grant all privileges on parts_rm.* to 'mall'@'%' with grant option;
+flush privileges;
+
+#创建用户只给查询权限（可以提供给仅查询数据使用）
+create user 'readmall'@'%' identified by  '123456';
+update mysql.user set host='%' where user='readmall';
+ALTER USER 'readmall'@'%' IDENTIFIED BY '123456' PASSWORD EXPIRE NEVER;
+
+ALTER USER 'readmall'@'%' IDENTIFIED WITH mysql_native_password BY '123456';
+grant select on parts_rm.* to 'readmall'@'%'  with grant option;
+flush privileges;
+
+#创建用户只给查询，新增，编辑删除权限(推荐程序中使用)
+create user 'onlinemall'@'%' IDENTIFIED WITH mysql_native_password BY '123456';
+update mysql.user set host='%' where user='onlinemall';
+grant select,insert,update,delete on parts_rm.* to 'onlinemall'@'%'  with grant option;
+flush privileges;
+
+#大权限，不推荐使用
+grant select,delete,update,create,drop on *.* to 'mall'@'%' with grant option;
+
+
+
+
+
+

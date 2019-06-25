@@ -1,0 +1,22 @@
+Welcome to
+      ____              __
+     / __/__  ___ _____/ /__
+    _\ \/ _ \/ _ `/ __/  '_/
+   /___/ .__/\_,_/_/ /_/\_\   version 1.6.1
+      /_/
+
+Using Scala version 2.10.5 (Java HotSpot(TM) 64-Bit Server VM, Java 1.7.0_80)
+Type in expressions to have them evaluated.
+Type :help for more information.
+Spark context available as sc.
+SQL context available as sqlContext.
+
+scala> val data = sc.textFile("hdfs://nn.c:9000/tmp/demo2.csv").map(line => line .split(",")).map(userinfo => (userinfo(0), userinfo(1), userinfo(2), userinfo(3) ))
+data: org.apache.spark.rdd.RDD[(String, String, String, String)] = MapPartitionsRDD[3] at map at <console>:27
+
+scala> 
+
+scala> val uniqueIp = data.map{ case(mac, ip, cmd, fullcmd) => ip }.distinct().c ount()
+uniqueIp: Long = 615
+
+scala> Stopping spark context.

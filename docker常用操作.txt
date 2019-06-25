@@ -1,0 +1,83 @@
+docker 常用操作
+
+
+
+IDEA直接连接方法
+打开TCP管理端口
+cat > /etc/systemd/system/docker.service.d/tcp.conf <<EOF
+[Service]
+ExecStart=
+ExecStart=/usr/bin/dockerd -H unix:///var/run/docker.sock -H tcp://0.0.0.0:2375
+EOF
+
+
+systemctl daemon-reload
+systemctl restart docker
+
+关闭TCP管理端口
+rm  /etc/systemd/system/docker.service.d/tcp.conf -rf
+systemctl daemon-reload
+systemctl restart docker
+ps aux |grep dockerd
+
+
+
+
+
+#docker 安装mysql8
+
+docker pull mysql
+docker run -d -v /home/docker-mysql/:/var/lib/mysql -p 3306:3306 --name parts -e MYSQL_ROOT_PASSWORD=123456 mysql
+
+
+
+
+docker exec -it parts /bin/bash
+
+
+update mysql.user set host='%' where user='root';
+
+ALTER USER 'root'@'%' IDENTIFIED BY '123456' PASSWORD EXPIRE NEVER;
+
+ALTER USER 'root'@'%' IDENTIFIED WITH mysql_native_password BY '123456';
+
+grant all privileges on *.* to 'root'@'%' with grant option;
+flush privileges;
+
+
+#创建账户
+create user 'root'@'10.3.1.33' identified by  '123456';
+
+#赋予权限，with grant option这个选项表示该用户可以将自己拥有的权限授权给别人
+grant all privileges on *.* to 'root'@'10.3.1.33' with grant option;
+
+#改密码&授权超用户，flush privileges 命令本质上的作用是将当前user和privilige表中的用户信息/权限设置从mysql库(MySQL数据库的内置库)中提取到内存里
+flush privileges;
+
+#创建用户给指定库的所有权限
+create user 'mall'@'%' identified by  '123456';
+
+update mysql.user set host='%' where user='mall';
+ALTER USER 'mall'@'%' IDENTIFIED BY '123456' PASSWORD EXPIRE NEVER;
+
+ALTER USER 'mall'@'%' IDENTIFIED WITH mysql_native_password BY '123456';
+grant all privileges on parts_rm.* to 'mall'@'%' with grant option;
+flush privileges;
+
+#创建用户只给查询权限（可以提供给仅查询数据使用）
+create user 'readmall'@'%' identified by  '123456';
+update mysql.user set host='%' where user='readmall';
+ALTER USER 'readmall'@'%' IDENTIFIED BY '123456' PASSWORD EXPIRE NEVER;
+
+ALTER USER 'readmall'@'%' IDENTIFIED WITH mysql_native_password BY '123456';
+grant select on parts_rm.* to 'readmall'@'%'  with grant option;
+flush privileges;
+
+#创建用户只给查询，新增，编辑删除权限(推荐程序中使用)
+create user 'onlinemall'@'%' IDENTIFIED WITH mysql_native_password BY '123456';
+update mysql.user set host='%' where user='onlinemall';
+grant select,insert,update,delete on parts_rm.* to 'onlinemall'@'%'  with grant option;
+flush privileges;
+
+#大权限，不推荐使用
+grant select,delete,update,create,drop on *.* to 'mall'@'%' with grant option;

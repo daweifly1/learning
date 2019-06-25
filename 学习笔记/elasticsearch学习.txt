@@ -1,0 +1,110 @@
+
+
+
+安装分词插件
+./bin/elasticsearch-plugin install https://github.com/medcl/elasticsearch-analysis-ik/releases/download/v6.6.0/elasticsearch-analysis-ik-6.6.0.zip
+
+
+curl -X PUT '10.100.2.106:9200/accounts' -d '
+{
+  "mappings": {
+    "person": {
+      "properties": {
+        "user": {
+          "type": "text",
+          "analyzer": "ik_max_word",
+          "search_analyzer": "ik_max_word"
+        },
+        "title": {
+          "type": "text",
+          "analyzer": "ik_max_word",
+          "search_analyzer": "ik_max_word"
+        },
+        "desc": {
+          "type": "text",
+          "analyzer": "ik_max_word",
+          "search_analyzer": "ik_max_word"
+        }
+      }
+    }
+  }
+}'
+
+curl -X PUT '10.100.2.106:9200/accounts/person/1' -d '
+{
+  "user": "张三",
+  "title": "工程师",
+  "desc": "数据库管理"
+}' 
+
+
+<dependency>
+            <groupId>org.springframework.data</groupId>
+            <artifactId>spring-data-elasticsearch</artifactId>
+            <version>3.1.2.RELEASE</version>
+</dependency>
+  
+  
+  接着配置yml
+
+spring:
+  data:
+    elasticsearch:
+      repositories:
+        enabled: true
+      cluster-nodes: 192.168.0.2:9300
+      cluster-name: elas_cluster
+	  
+这里说一个bug，如果有redis你可能会抛异常，我这里是在启动类里配置了这么一行
+
+public static void main(String[] args) throws Exception{
+    System.setProperty("es.set.netty.runtime.available.processors", "false");
+    SpringApplication.run(EsStart.class,args);
+}
+	  
+
+清空elasticsearch数据
+删除安装目录下 \data 目录下的文件即可。
+
+查询删除：
+curl -u用户名:密码 -XPOST '192.168.0.201:9200/quality_control/my_type/_delete_by_query?refresh&slices=5&pretty' -H 'Content-Type: application/json' 
+-d'{
+  "query": {
+    "match_all": {}
+  }
+}'
+
+kibana：
+
+#清空索引
+POST quality_control/my_type/_delete_by_query?refresh&slices=5&pretty
+{
+  "query": {
+    "match_all": {}
+  }
+}
+
+
+b-tree（平衡多路查找树） 索引是为写入优化的索引结构
+
+一棵m阶的B-Tree有如下特性： 
+1. 每个节点最多有m个孩子。 
+2. 除了根节点和叶子节点外，其它每个节点至少有Ceil(m/2)个孩子。 
+3. 若根节点不是叶子节点，则至少有2个孩子 
+4. 所有叶子节点都在同一层，且不包含其它关键字信息 
+5. 每个非终端节点包含n个关键字信息（P0,P1,…Pn, k1,…kn） 
+6. 关键字的个数n满足：ceil(m/2)-1 <= n <= m-1 
+7. ki(i=1,…n)为关键字，且关键字升序排序。 
+8. Pi(i=1,…n)为指向子树根节点的指针。P(i-1)指向的子树的所有节点关键字均小于ki，但都大于k(i-1)
+
+
+
+原理理解：
+
+BitMap算法
+
+
+
+
+
+

@@ -1,0 +1,300 @@
+Centos7安装Oracle 11gR2
+
+一.调整系统
+
+[root]
+#安装一些必要的软件
+##wget         下载用的
+##unzip        解压oracle安装文件
+##net-tools    查看本机网络情况 比如netstat
+yum install wget unzip net-tools -y
+
+
+#使用oracle提供的环境配置工具
+##这个工具会调整内核参数，建立一些必要的linux用户&组
+##可能网络不好会安装不成功，多install一下
+
+wget http://public-yum.oracle.com/public-yum-ol7.repo -O /etc/yum.repos.d/public-yum-ol7.repo
+wget http://public-yum.oracle.com/RPM-GPG-KEY-oracle-ol7 -O /etc/pki/rpm-gpg/RPM-GPG-KEY-oracle
+
+yum install oracle-rdbms-server-11gR2-preinstall -y
+
+
+
+groupadd oinstall　　　　　　　　　　　　　#创建用户组oinstall
+groupadd dba　　      　　　　　　　　　　 #创建用户组dba
+useradd -g oinstall -g dba -m oracle　　#创建oracle用户，并加入到oinstall和dba用户组
+groups oracle  　　　　　　　　　　　　　　#查询用户组是否授权成功
+passwd oracle　　     　　　　　　　　　　 #设置用户oracle的登陆密码，不设置密码，在CentOS的图形登陆界面没法登陆
+id oracle                   　　　　　　 #查看新建的oracle用户
+
+
+
+#完成后备份一下这个目录的文件到其他目录
+##这个文件夹是修改系统后日志和原本的内核配置备份
+/var/log/oracle-rdbms-server-11gR2-preinstall
+
+#加载内核参数 和sysctl -p一样
+sysctl -f
+
+#创建一些目录和配置
+##配置oracle系统配置文件&授权
+cat >> /etc/oraInst.loc <<EOF
+inventory_loc=/data/oraInventory
+inst_group=oinstall
+EOF
+chmod 664 /etc/oraInst.loc
+
+##创建oracle安装的目录&授权
+mkdir -p /data
+mkdir /data/tmp
+chown -R oracle:oinstall /data/
+chmod -R 775 /data
+chmod a+wr /data/tmp
+
+
+#设置oracle用户密码 oracle是安装工具自己创建的,参考我之前讲的
+passwd oracle
+
+二.配置用户环境&上传文件
+#为oracle用户添加一些必要的环境
+cat >> /home/oracle/.bash_profile <<EOF
+TMP=/data/tmp
+TMPDIR=/data/tmp
+export TMP TMPDIR
+
+ORACLE_BASE=/data/oracle
+ORACLE_HOME=/data/oracle/product/11.2.0/dbhome_1
+ORACLE_SID=orcl
+PATH=$ORACLE_HOME/bin:$PATH
+export ORACLE_BASE ORACLE_SID ORACLE_HOME PATH
+EOF
+#生效
+source .bash_profile
+
+#上传至/home/oracle/
+#################50%
+linux.x64_11gR2_database_2of2.zip
+linux.x64_11gR2_database_1of2.zip
+##################################100%
+
+#解压 
+unzip linux.x64_11gR2_database_1of2.zip  -d /data/database && unzip linux.x64_11gR2_database_2of2.zip  -d /data/database
+
+chown -R oracle:oinstall /data/database
+
+三.配置db_install.rsp
+#备份到/home/oracle/rsp/
+cp -r /data/database/response /home/oracle/rsp  [/data/database/database/response]
+
+#配置安装响应文件db_install.rsp文件 这里配置参数先下载到本地 用记事本根据自己情况修改 在上传过去
+
+##我的/home/oracle/rsp/db_install.rsp
+oracle.install.responseFileVersion=/oracle/install/rspfmt_dbinstall_response_schema_v11_2_0
+#INSTALL_DB_AND_CONFIG安装并自动配置数据库实例和监听 建议首次安装用这个
+#不然配置另外两个文件，新建实例和监听
+oracle.install.option=INSTALL_DB_AND_CONFIG
+ORACLE_HOSTNAME=localhost
+UNIX_GROUP_NAME=oinstall
+INVENTORY_LOCATION=/data/oraInventory
+SELECTED_LANGUAGES=zh_CN,en
+ORACLE_HOME=/data/oracle/product/11.2.0/dbhome_1
+ORACLE_BASE=/data/oracle
+oracle.install.db.InstallEdition=EE
+oracle.install.db.isCustomInstall=true
+oracle.install.db.customComponents=oracle.server:11.2.0.1.0,oracle.sysman.ccr:10.2.7.0.0,oracle.xdk:11.2.0.1.0,oracle.rdbms.oci:11.2.0.1.0,oracle.network:11.2.0.1.0,oracle.network.listener:11.2.0.1.0,oracle.rdbms:11.2.0.1.0,oracle.options:11.2.0.1.0,oracle.rdbms.partitioning:11.2.0.1.0,oracle.oraolap:11.2.0.1.0,oracle.rdbms.dm:11.2.0.1.0,oracle.rdbms.dv:11.2.0.1.0,orcle.rdbms.lbac:11.2.0.1.0,oracle.rdbms.rat:11.2.0.1.0
+oracle.install.db.DBA_GROUP=dba
+oracle.install.db.OPER_GROUP=oinstall
+oracle.install.db.config.starterdb.type=GENERAL_PURPOSE
+#这个是服务名
+oracle.install.db.config.starterdb.globalDBName=orcl.lan
+#实例sid
+oracle.install.db.config.starterdb.SID=orcl
+oracle.install.db.config.starterdb.characterSet=AL32UTF8
+oracle.install.db.config.starterdb.memoryOption=true
+#最小256M 我是学习就选择最小了
+oracle.install.db.config.starterdb.memoryLimit=256
+#是否安装学习的scott和hr(我就知道这两个)
+oracle.install.db.config.starterdb.installExampleSchemas=true
+oracle.install.db.config.starterdb.enableSecuritySettings=true
+#密码全设置成oracle (安装时会提示，个人学习忽略)
+oracle.install.db.config.starterdb.password.ALL=oracle
+oracle.install.db.config.starterdb.control=DB_CONTROL
+oracle.install.db.config.starterdb.dbcontrol.enableEmailNotification=false
+oracle.install.db.config.starterdb.automatedBackup.enable=false
+oracle.install.db.config.starterdb.storageType=FILE_SYSTEM_STORAGE
+oracle.install.db.config.starterdb.fileSystemStorage.dataLocation=/data/oracle/oradata
+#true
+DECLINE_SECURITY_UPDATES=true
+
+四.静默安装数据库
+/data/database/database/runInstaller -silent -ignorePrereq  -responseFile /data/database/database/response/db_install.rsp
+
+
+##查看安装过程 另开一个shell 稍等
+tail -f  /data/oraInventory/logs/installActions2017-09-24_12-26-49PM.log
+
+#最后会提示安装完成 ！【切换root执行】
+切换到oracle】
+#sqlplus登录
+sqlplus / as sysdba
+#查看状态
+select status from v$instance;
+
+五.配置防火墙
+[root]
+#查看1521端口
+netstat -an|grep 1521
+
+#防火墙 放行1521端口
+firewall-cmd --zone=public --add-port=1521/tcp --permanent
+#重新加载防火墙规则
+firewall-cmd --reload
+
+六.数据库的启动&关闭
+
+#修改oracle服务启动配置
+
+vi /etc/oratab
+
+:wq保存
+
+
+[oracle]
+#启动oracle
+#因为修改了/etc/oratab  N->y 所以启动服务也会同时启动实例
+##N的情况不会同时启动实例 sqlplus登录会提示 an idle instance
+##用sqlplus 然后---> startup启动实例
+#重启系统后用这个命令启动
+dbstart $ORACLE_HOME
+#关闭
+dbshut $ORACLE_HOME
+ #远程连接oracle
+
+sqlplus sys/oracle@192.168.100.131:1521/ORCL.LAN as sysdba
+conn sys/oracle@192.168.100.131:1521/ORCL.LAN as sysdba
+ORCL.LAN是服务名 不是sid
+
+
+
+
+
+
+docker run -it -v /c/Users/xcit/share/:/test ansible/centos7-ansible   /bin/bash
+
+
+
+
+docker 操作
+
+docker run -d -p 1521:1521 --name oracle_11g -v /c/Users/xcit/share/:/test registry.aliyuncs.com/helowin/oracle_11g
+
+
+docker run -d -p 1521:1521 --name oracle_11g -v /c/Users/xcit/share/:/test  3fa112fd3642
+
+
+docker start oracle_11g
+
+
+docker exec -it oracle_11g bash
+
+
+
+docker run -d -p 1521:1521 --name oracle_11g -v /c/Users/xcit/share/:/test  3fa112fd3642
+
+
+
+su root
+
+输入密码helowin
+
+vi /etc/profile 并在文件最后添加如下命令
+
+export ORACLE_HOME=/home/oracle/app/oracle/product/11.2.0/dbhome_2
+
+export ORACLE_SID=helowin
+
+export PATH=$ORACLE_HOME/bin:$PATH
+
+ln -s $ORACLE_HOME/bin/sqlplus /usr/bin
+
+---------------------
+sqlplus /nolog
+conn /as sysdba
+
+
+看 NLS_LANG 信息：
+SELECT parameter, value FROM v$nls_parameters WHERE parameter LIKE '%CHARACTERSET';
+NLS_LANG 信息已经变成：
+
+
+
+
+
+
+
+
+shutdown immediate;
+startup mount
+ALTER SYSTEM ENABLE RESTRICTED SESSION;
+ALTER SYSTEM SET JOB_QUEUE_PROCESSES=0;
+ALTER SYSTEM SET AQ_TM_PROCESSES=0;
+alter database open;
+###ALTER DATABASE character set INTERNAL_USE ZHS16GBK;
+
+ALTER DATABASE character set INTERNAL_USE AL32UTF8;
+shutdown immediate;
+startup
+select userenv('language') from dual;
+
+
+
+SIMPLIFIED CHINESE_CHINA.AL32UTF8
+
+SIMPLIFIED CHINESE_CHINA.ZHS16GBK
+
+
+
+shutdown immediate;
+STARTUP MOUNT;
+ALTER SESSION SET SQL_TRACE=TRUE;
+ALTER SYSTEM ENABLE RESTRICTED SESSION;
+ALTER SYSTEM SET JOB_QUEUE_PROCESSES=0;
+ALTER SYSTEM SET AQ_TM_PROCESSES=0;
+ALTER DATABASE OPEN;
+ALTER DATABASE character set INTERNAL_USE AL32UTF8;
+ALTER SESSION SET SQL_TRACE=FALSE;
+shutdown immediate;
+startup;
+
+ 
+
+
+
+
+create tablespace scm datafile '/home/oracle/scm_dev.dbf' size 200M autoextend on next 10M;
+
+
+create tablespace scm datafile '/data/oracle/oradata/orcl/scm_dev01.dbf' size 200M autoextend on next 10M;
+
+
+create user scm identified by scm default tablespace scm ;
+
+grant connect,resource to scm;  
+grant create any sequence to scm;  
+grant create any table to scm;  
+grant delete any table to scm;  
+grant insert any table to scm;  
+grant select any table to scm;  
+grant unlimited tablespace to scm;  
+grant execute any procedure to scm;  
+grant update any table to scm;  
+grant create any view to scm; 
+
+
+
+create table test01(
+	id int not null,
+	name varchar(8) not null,
+	gender varchar2(2) not null
+);
