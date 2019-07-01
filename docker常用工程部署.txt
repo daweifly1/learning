@@ -1,6 +1,9 @@
 #单机zk
 docker run --privileged=true -d --name zookeeper --publish 2181:2181  -d zookeeper:latest
 
+docker run -id --privileged=true --name=nexus3 --restart=always -p 8081:8081 -v /home/docker-nexus-data:/var/nexus-data sonatype/nexus3  （这个是容器id或名称）
+
+
 
 
 #docker 安装mysql8
