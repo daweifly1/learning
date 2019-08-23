@@ -1,5 +1,62 @@
 
 
+#下载镜像
+docker pull 10.100.2.92:5000/parts/nginx
+docker pull 10.100.2.92:5000/parts/vsftpd
+
+#运行个nginx，copy配置使用
+docker run -d -p 8083:80 --name nginx-test -d 10.100.2.92:5000/parts/nginx
+
+mkdir -p /data/docker/nginx/conf
+mkdir -p  /data/docker/nginx/conf/conf.d
+
+#copy nginx 配置（先查ps）
+docker cp 998042a5c8bc:/etc/nginx/nginx.conf  /data/docker/nginx/conf
+docker cp 998042a5c8bc:/etc/nginx/conf.d/default.conf  /data/docker/nginx/conf/conf.d
+
+修改 /data/docker/nginx/conf/nginx.conf     “user  root;”
+
+#运行将要使用的nginx
+docker run -d -p 8084:80 --name parts-nginx-web -v /data/docker/nginx/conf/nginx.conf:/etc/nginx/nginx.conf:ro -v /data/docker/nginx/conf/conf.d:/etc/nginx/conf.d:ro  -v /data/docker/nginx/html:/usr/share/nginx/html:rw -v/data/docker/nginx/logs:/var/log/nginx -d       10.100.2.92:5000/parts/nginx
+
+#运行ftp服务
+docker run -d -p 21:21 -p 20:20 -p 21100-21110:21100-21110 -v /data/docker/nginx:/home/vsftpd -e FTP_USER=html -e FTP_PASS=pssword -e PASV_ADDRESS=192.168.99.2 -e PASV_MIN_PORT=21100 -e PASV_MAX_PORT=21110 --name vsftpd --restart=always 10.100.2.92:5000/parts/vsftpd
+
+
+#停止删除测试nginx容器
+docker stop 998042a5c8bc
+docker rm 998042a5c8bc
+
+
+docker run -d -v /home/jars/logs/:/home/logs --name parts-storage  --expose=9004 -p 9004:9004  -p 90040:90040  -e "EUREKA_INSTANCE_IP-ADDRESS=10.100.2.109" -e "SERVER_PORT=9004" parts-storage:latest
+
+
+
+
+
+#fastdfs
+docker run -d --network=host --name trakcer -v /home/fdfs/tracker_data:/fastdfs/tracker/data  season/fastdfs tracker
+#netstat -aon | grep 22122
+
+docker run -d --network=host --name storage -e TRACKER_SERVER=10.100.2.109:22122 -v /home/fdfs/storage:/fastdfs/store_path -e GROUP_NAME=group1 season/fastdfs storage
+
+
+docker cp storage:/fdfs_conf/storage.conf ~/
+修改后
+docker cp ~/storage.conf storage:/fdfs_conf/
+docker stop storage
+docker start storage
+
+docker exec -it storage bash
+cd fdfs_conf
+fdfs_monitor storage.conf
+
+在docker模拟客户端上传文件到storage容器
+docker run -tid --name fdfs_sh --net=host season/fastdfs sh
+
+
+
+
 
 #docker 安装mysql8
 docker run -d -v /home/docker-mysql/:/var/lib/mysql -p 3306:3306 --name parts -e MYSQL_ROOT_PASSWORD=123456 mysql
@@ -20,15 +77,62 @@ docker run -d --name config-server --expose=18101 -p 18101:18101 -e "EUREKA_INST
 
 
 #docker auth-server
-docker run -d --name auth-server  --expose=17003 -p 17003:17003  -e "EUREKA_INSTANCE_IP-ADDRESS=10.100.2.109" -e "SERVER_PORT=17003"  auth-server:v1.0
+docker run -d -v /home/jars/logs/:/home/logs --name auth-server  --expose=17003 -p 17003:17003  -e "EUREKA_INSTANCE_IP-ADDRESS=10.100.2.109" -e "SERVER_PORT=17003"  auth-server:v1.0
 
 
 
-docker run -d --name  gw-oauth-server  --expose=9000 -p 9000:9000  -e "EUREKA_INSTANCE_IP-ADDRESS=10.100.2.109" -e "SERVER_PORT=9000"  gw-oauth-server:v1.0
+docker run -d -v /home/jars/logs/:/home/logs --name  gw-oauth-server  --expose=9000 -p 9000:9000  -e "EUREKA_INSTANCE_IP-ADDRESS=10.100.2.109" -e "SERVER_PORT=9000"  gw-oauth-server:v2.0
 
 
 docker run -d --name  gw-oauth-client  --expose=9001 -p 9001:9001  -e "EUREKA_INSTANCE_IP-ADDRESS=10.100.2.109" -e "SERVER_PORT=9001" oauth-client:v1.0
 
+
+
+
+
+
+
+使用Docker安装Kong
+1.
+docker network create kong-net 
+2.
+docker run -d --name kong-database --network=kong-net \
+-p 5432:5432 \
+-e "POSTGRES_USER=kong" \
+-e "POSTGRES_DB=kong" postgres:9.6 
+3.
+docker run --rm     --network=kong-net     -e "KONG_DATABASE=postgres"     -e "KONG_PG_HOST=kong-database"     -e "KONG_CASSANDRA_CONTACT_POINTS=kong-database"     kong:0.13.1-centos  kong migrations bootstrap
+
+docker run --rm     --network=kong-net     -e "KONG_DATABASE=postgres"     -e "KONG_PG_HOST=kong-database"     -e "KONG_CASSANDRA_CONTACT_POINTS=kong-database"     kong:0.13.1-centos  kong migrations up
+
+4.
+docker run -d --name kong \
+    --network=kong-net \
+    -e "KONG_DATABASE=postgres" \
+    -e "KONG_PG_HOST=kong-database" \
+    -e "KONG_CASSANDRA_CONTACT_POINTS=kong-database" \
+    -e "KONG_PROXY_ACCESS_LOG=/dev/stdout" \
+    -e "KONG_ADMIN_ACCESS_LOG=/dev/stdout" \
+    -e "KONG_PROXY_ERROR_LOG=/dev/stderr" \
+    -e "KONG_ADMIN_ERROR_LOG=/dev/stderr" \
+    -e "KONG_ADMIN_LISTEN=0.0.0.0:8001, 0.0.0.0:8444 ssl" \
+    -p 8000:8000 \
+    -p 8443:8443 \
+    -p 8001:8001 \
+    -p 8444:8444 \
+    kong:0.13.1-centos
+	
+5.
+docker run -d --name kong-dashboard \
+    --network=kong-net \
+    --link kong:kong \
+    -p 9080:8080 \
+    pgbi/kong-dashboard:v2 
+
+
+http://10.100.2.109:8000/cc
+
+在Kong0.13.0版本以前，有API对象，但是从0.13.0之后开始逐步抛弃API对象，使用路由和服务组合来取代API对象，这提高了Kong的灵活性。基于此本文也将不介绍有关API对象的操作
 
 
 
@@ -65,6 +169,6 @@ String s="eyJhbGciOiJIUzUxMiJ9.eyJzdWJqZWN0Ijoie1wiYWNjb3VudE5vbkV4cGlyZWRcIjp0c
 
 AB4mf17BMnZSUXWF4bKksA==
 
-
+				
 
 

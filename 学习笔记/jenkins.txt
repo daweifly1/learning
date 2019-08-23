@@ -306,7 +306,7 @@ sudo docker run -d -p 8080:8080 -p 50000:50000 --name jenkins -u root -v /c/User
 de83331717904300ae9c7fb6d95843a6
 
 
-java -jar jenkins.war --httpPort=8080
+nohup  java -jar jenkins.war --httpPort=8080 &
 
 24deecb3df65491499d866bcc4c3e669(109环境)
 
