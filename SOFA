@@ -1,0 +1,15 @@
+1800000001
+
+
+SOFALookout 服务端快速开始
+
+
+1.
+docker run -d --name es -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" elasticsearch:5.6
+
+docker tag elasticsearch:5.6 10.100.2.92:5000/parts/elasticsearch:5.6
+
+docker push 10.100.2.92:5000/parts/elasticsearch:5.6
+
+在109上
+docker run -d --name es -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" 10.100.2.92:5000/parts/elasticsearch:5.6

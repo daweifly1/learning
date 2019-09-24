@@ -1,0 +1,21 @@
+
+
+
+#docker 安装eureka_g_
+docker run -d -p 18100:18100 --name  eureka_g  eureka_g:v1.0
+
+#docker 安装config-server
+docker run -d --name config-server --expose=18101 -p 18101:18101 -e "EUREKA_INSTANCE_IP-ADDRESS=10.100.2.109" -e "SERVER_PORT=18101" config-server:v1.0
+
+
+
+
+#docker auth-server
+docker run -d -v /home/jars/logs/:/home/logs --name auth-server  --expose=17003 -p 17003:17003  -e "EUREKA_INSTANCE_IP-ADDRESS=10.100.2.109" -e "SERVER_PORT=17003"  auth-server:v1.0
+
+
+
+docker run -d -v /home/jars/logs/:/home/logs --name  gw-oauth-server  --expose=9000 -p 9000:9000  -e "EUREKA_INSTANCE_IP-ADDRESS=10.100.2.109" -e "SERVER_PORT=9000"  gw-oauth-server:v2.0
+
+# 测试oauth镜像（一般不用）
+docker run -d --name  gw-oauth-client  --expose=9001 -p 9001:9001  -e "EUREKA_INSTANCE_IP-ADDRESS=10.100.2.109" -e "SERVER_PORT=9001" oauth-client:v1.0
