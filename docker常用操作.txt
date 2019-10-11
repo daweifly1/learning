@@ -11,6 +11,13 @@ docker run -p 9090:80 --name mynginx -v $PWD/www:/www -v $PWD/logs:/wwwlogs -v $
 
 
 
+
+CLASSPATH=$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar:$JAVA_HOME/lib/sapjco3.jar
+        JRE_HOME=$JAVA_HOME/jre
+        LD_LIBRARY_PATH=dir:$LD_LIBRARY_PATH:$JAVA_HOME/jre/lib/amd64/server
+
+
+
 IDEA直接连接方法
 打开TCP管理端口
 
