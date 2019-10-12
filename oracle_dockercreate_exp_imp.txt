@@ -1,0 +1,130 @@
+
+
+exp xgbj/xgbj@10.100.2.110:1521/orcl file=d:\xgbj_1011.dmp
+
+
+imp XGBJ1/XGBJ1@10.100.2.110:1521/orcl fromuser=xgbj touser=XGBJ1  file=d:\xgbj_1011.dmp  ignore=y 
+
+
+
+imp system/system@10.100.2.109:1521/helowin fromuser=xgbj touser=xgbjdev  file=d:\xgbj_1011.dmp  ignore=y 
+
+
+
+开发环境
+http://10.100.2.109:9003/clientweb/main.html#/sales/clientClass
+
+
+和测试环境使用同一套eureka 和配置中心（走的配置文件不同），独立网关、auth device
+
+开发环境
+和测试环境 数据库分离（copy一个测试环境schema）
+spring:
+  datasource:
+    url: jdbc:oracle:thin:@10.100.2.110:1521:orcl
+    username: XGBJ1
+    password: XGBJ1
+
+
+
+
+docker pull 10.100.2.92:5000/parts/oracle_11g
+
+docker run -d -p 8081:8080 -p 1522:1521 --name oracle11g -v /data/docker/oracle/oradata/11g:/data/docker/oracle/oradata/11g 10.100.2.92:5000/parts/oracle_11g
+
+
+docker run -d -p 1521:1521 --name oracle11g 10.100.2.92:5000/parts/oracle_11g
+
+
+
+docker exec -it oracle11g bash
+
+su root
+输入密码  helowin
+
+ vi /etc/profile
+在文件末未添加
+
+export ORACLE_HOME=/home/oracle/app/oracle/product/11.2.0/dbhome_2
+export ORACLE_SID=helowin
+export PATH=$ORACLE_HOME/bin:$PATH
+
+ln -s $ORACLE_HOME/bin/sqlplus /usr/bin
+
+切换到oracle 用户
+
+sqlplus /nolog
+conn /as sysdba
+
+alter user system identified by system;
+alter user sys identified by oracle;
+ALTER PROFILE DEFAULT LIMIT PASSWORD_LIFE_TIME UNLIMITED;
+
+
+提交修改
+docker commit 容器名称或ID 新的镜像名称:版本
+docker run -d -p 8080:8080 -p 1521:1521 -v /u01/app/oracle/oradata/11g:/u01/app/oracle   ???/oracle_11g
+
+docker exec -it f412c945d07f /bin/bash
+
+
+
+
+
+create tablespace scm datafile '/home/oracle/scm_dev01.dbf' size 200M autoextend on next 10M;
+
+create user scm identified by scm default tablespace scm ;
+
+grant connect,resource to scm;  
+grant create any sequence to scm;  
+grant create any table to scm;  
+grant delete any table to scm;  
+grant insert any table to scm;  
+grant select any table to scm;  
+grant unlimited tablespace to scm;  
+grant execute any procedure to scm;  
+grant update any table to scm;  
+grant create any view to scm; 
+
+
+
+
+create tablespace xgbj datafile '/home/oracle/xgbj_dev01.dbf' size 200M autoextend on next 10M;
+
+create user xgbj identified by xgbj default tablespace xgbj ;
+
+grant connect,resource to xgbj;  
+grant create any sequence to xgbj;  
+grant create any table to xgbj;  
+grant delete any table to xgbj;  
+grant insert any table to xgbj;  
+grant select any table to xgbj;  
+grant unlimited tablespace to xgbj;  
+grant execute any procedure to xgbj;  
+grant update any table to xgbj;  
+grant create any view to xgbj; 
+
+
+
+
+create tablespace xgbjdev datafile '/home/oracle/xgbjdev_dev01.dbf' size 200M autoextend on next 10M;
+
+create user xgbjdev identified by xgbjdev default tablespace xgbjdev ;
+
+grant connect,resource to xgbjdev;  
+grant create any sequence to xgbjdev;  
+grant create any table to xgbjdev;  
+grant delete any table to xgbjdev;  
+grant insert any table to xgbjdev;  
+grant select any table to xgbjdev;  
+grant unlimited tablespace to xgbjdev;  
+grant execute any procedure to xgbjdev;  
+grant update any table to xgbjdev;  
+grant create any view to xgbjdev;
+
+
+
+
+
+
+
