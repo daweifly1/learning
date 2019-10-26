@@ -11,6 +11,10 @@ imp system/system@10.100.2.109:1521/helowin fromuser=xgbj touser=xgbjdev  file=d
 
 
 
+exp xgbj/xgbj@10.1.1.238:1521/orcl file=d:\xgbj_online_1015.dmp
+
+
+
 开发环境
 http://10.100.2.109:9003/clientweb/main.html#/sales/clientClass
 
@@ -126,5 +130,27 @@ grant create any view to xgbjdev;
 
 
 
+create tablespace xgbjbeta datafile '/home/oracle/xgbjbeta_dev01.dbf' size 200M autoextend on next 10M;
+
+create user xgbjbeta identified by xgbjbeta default tablespace xgbjbeta ;
+
+grant connect,resource to xgbjbeta;  
+grant create any sequence to xgbjbeta;  
+grant create any table to xgbjbeta;  
+grant delete any table to xgbjbeta;  
+grant insert any table to xgbjbeta;  
+grant select any table to xgbjbeta;  
+grant unlimited tablespace to xgbjbeta;  
+grant execute any procedure to xgbjbeta;  
+grant update any table to xgbjbeta;  
+grant create any view to xgbjbeta;
 
 
+
+
+
+
+
+
+
+10.100.2.69 root/123abc，
