@@ -1,0 +1,21 @@
+
+
+#单节点 nacos
+
+version: '2'
+services:
+  nacos:
+    image: nacos/nacos-server
+    container_name: nacos
+    environment:
+      - MODE=standalone
+    restart: always
+    ports:
+      - '8848:8848'
+
+
+
+
+
+
+docker commit -m  "容器做镜像的备注"   -a  "chendawei"   容器ID  镜像名称
