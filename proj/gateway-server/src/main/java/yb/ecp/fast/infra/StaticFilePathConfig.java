@@ -1,25 +1,23 @@
 package yb.ecp.fast.infra;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+@RefreshScope
 @Slf4j
 @Configuration
 public class StaticFilePathConfig implements WebMvcConfigurer {////implements WebMvcConfigurer //extends WebMvcConfigurationSupport
 
-//    @Value("${file.staticAccessPath}")
-//    private String staticAccessPath;
-//    @Value("${file.uploadFolder}")
-//    private String uploadFolder;
+    @Value("${xgit.outsideStatic}")
+    private String outsideStatic;
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        String outside_static = "C:/privateSpace/xgit-parts-pom/manage-web/dist/";
-
-        registry.addResourceHandler("/**").addResourceLocations("file:" + outside_static
-        );
+        registry.addResourceHandler("/**").addResourceLocations("file:" + outsideStatic);
     }
 
 }

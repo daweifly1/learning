@@ -49,9 +49,6 @@ spring:
         min-idle: 20 # 连接池中的最小空闲连接
         max-wait: 1000 # 连接池最大阻塞等待时间（使用负值表示没有限制）
     timeout: 3000
-  resources:
-    staticLocations: file:D:\dist
-
 
 server:
   port: 9003
@@ -61,4 +58,3 @@ server:
       cookie:
         http-only: false
         max-age: 6000
-

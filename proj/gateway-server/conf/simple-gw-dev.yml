@@ -1,0 +1,88 @@
+﻿spring:
+  http:
+    multipart:
+      maxFileSize: 10MB
+      maxRequestSize: 10MB
+  file:
+    download:
+      path: /root/xcmg/file/
+  zipkin:
+    enabled: false
+  resources:
+    static-locations: classpath:/META-INF/resources/,classpath:/resources/,classpath:/static/,classpath:/public/,file:/root/xcmg
+fast:
+  auth:
+    login:
+      url: /ius1/auth/login,/ius1/auth/sigin,/ius/auth/login,/ius/auth/sigin
+    logout:
+      url: /ius1/auth/logout,/ius1/auth/signout,/ius/auth/logout,/ius/auth/signout
+    webfront:
+      path: /root/xcmg
+    user:
+      session:
+        ttl: 3600
+zuul:
+  routes:
+    api-a.path: /ius/**
+    api-a.serviceId: fast-auth-server
+
+    api-a1.path: /ius1/**
+    api-a1.serviceId: fast-auth-server1
+
+    api-c.path: /dev/**
+    api-c.serviceId: device-service
+
+    api-c1.path: /dev-cc/**
+    api-c1.serviceId: device-service-cc
+    api-c2.path: /dev-hrq/**
+    api-c2.serviceId: device-service-hrq
+    api-c3.path: /dev-xzl/**
+    api-c3.serviceId: device-service-xzl
+    api-c4.path: /dev-wy/**
+    api-c4.serviceId: device-service-wy
+    api-c5.path: /dev-cd1/**
+    api-c5.serviceId: device-service-cd1
+    api-c6.path: /dev-cd2/**
+    api-c6.serviceId: device-service-cd2
+
+  host:
+    socket-timeout-millis: 6000000
+    connect-timeout-millis: 6000000
+
+  sensitive-headers: x-user-id,x-access-client,x-case-ticket
+  ignored-patterns: /**/fast-amigo/**
+
+hystrix:
+  command:
+    default:
+      execution:
+        isolation:
+          thread:
+            timeoutInMilliseconds: 6000000
+
+ribbon:
+  ReadTimeout: 6000000
+  ConnectTimeout: 6000000
+
+mybatis:
+  config-location: classpath:mybatis/mybatis-config.xml
+  mapper-locations: classpath:mybatis/mapper/*.xml
+  dialect: oracle
+downloadName: /opt/service/ftp/test.txt
+
+logging:
+  file: /opt/xgbj/service/mylogfile.log  #日志路径
+  level.root: info
+  log.level: debug
+
+jco:
+  client:
+    user: DMS_QC
+    passwd: 123456
+    lang: ZH
+    client: 800
+    sysnr: 00
+    ashost: 10.1.1.31
+
+xgit:
+  outsideStatic: D:/dist/
