@@ -7,16 +7,17 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.cloud.netflix.zuul.EnableZuulProxy;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.Bean;
-import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.session.data.redis.config.annotation.web.http.EnableRedisHttpSession;
 import org.springframework.session.web.http.DefaultCookieSerializer;
 
-@SpringBootApplication
-@EnableDiscoveryClient
+@SpringBootApplication(exclude = {
+        org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration.class,
+        org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration.class
+})
 @EnableZuulProxy
-@EnableFeignClients
+@EnableFeignClients(basePackages = {"yb.ecp.fast.infra.feign"})
 @EnableRedisHttpSession(maxInactiveIntervalInSeconds = 180000)
-@EnableScheduling
+@EnableDiscoveryClient
 public class GatewayServerApplication {
     public static void main(String[] a) {
         SpringApplication.run(GatewayServerApplication.class, a);

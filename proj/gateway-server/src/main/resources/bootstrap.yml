@@ -13,6 +13,7 @@ spring:
         heart-beat-interval: ${NACOS_DISCOVERY_HEART_BEAT:}
         heart-beat-timeout: ${NACOS_DISCOVERY_HEART_TIMEOUT:}
         ip-delete-timeout: ${NACOS_DISCOVERY_IP_DELETE:}
+        ip: 10.3.1.42
       config:
         server-addr: ${NACOS_CONFIG_ADDRESS:${spring.cloud.nacos.discovery.server-addr:}}
         cluster-name: ${NACOS_CONFIG_CLUSTER:${spring.cloud.nacos.discovery.cluster-name:}}
@@ -39,6 +40,18 @@ spring:
     suffix: .ftl
   redis:
     database: 7
+    host: 10.100.2.106
+    port: 6379
+    lettuce:
+      pool:
+        max-active:  100 # 连接池最大连接数（使用负值表示没有限制）
+        max-idle: 80 # 连接池中的最大空闲连接
+        min-idle: 20 # 连接池中的最小空闲连接
+        max-wait: 1000 # 连接池最大阻塞等待时间（使用负值表示没有限制）
+    timeout: 3000
+  resources:
+    staticLocations: file:D:\dist
+
 
 server:
   port: 9003

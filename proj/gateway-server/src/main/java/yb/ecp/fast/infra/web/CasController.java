@@ -1,15 +1,14 @@
 package yb.ecp.fast.infra.web;
 
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import yb.ecp.fast.infra.feign.CasClient;
 import yb.ecp.fast.infra.infra.ActionResult;
-import yb.ecp.fast.infra.util.StringUtil;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
@@ -21,7 +20,8 @@ public class CasController {
 
     @Value("${cas.defaultUrl:/cas}")
     private String defaultUrl;
-    @Autowired
+    //
+//    @Autowired
     private CasClient casClient;
 
     private Logger logger = LoggerFactory.getLogger(CasController.class);
@@ -37,7 +37,7 @@ public class CasController {
                 httpServletResponse.sendRedirect(this.defaultUrl);
             }
             String userId = (String) actionResult.getValue();
-            if (StringUtil.isNullOrSpace(userId)) {
+            if (StringUtils.isBlank(userId)) {
                 httpServletResponse.sendRedirect(this.defaultUrl);
             }
             httpSession.setAttribute("uid", userId);

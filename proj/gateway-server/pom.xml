@@ -99,19 +99,53 @@
             <optional>true</optional>
         </dependency>
 
+        <!--        <dependency>-->
+        <!--            <groupId>yb.ecp.fast.infra</groupId>-->
+        <!--            <artifactId>misc</artifactId>-->
+        <!--            <version>${fast-platform.version}</version>-->
+        <!--            <exclusions>-->
+        <!--                <exclusion>-->
+        <!--                    <groupId>*</groupId>-->
+        <!--                    <artifactId>*</artifactId>-->
+        <!--                </exclusion>-->
+        <!--                &lt;!&ndash;                <exclusion>&ndash;&gt;-->
+        <!--                &lt;!&ndash;                    <groupId>org.springframework.cloud</groupId>&ndash;&gt;-->
+        <!--                &lt;!&ndash;                    <artifactId>spring-cloud-starter-eureka</artifactId>&ndash;&gt;-->
+        <!--                &lt;!&ndash;                </exclusion>&ndash;&gt;-->
+        <!--            </exclusions>-->
+        <!--        </dependency>-->
+<!--        <dependency>-->
+<!--            <groupId>org.springframework.boot</groupId>-->
+<!--            <artifactId>spring-boot-starter-freemarker</artifactId>-->
+<!--        </dependency>-->
 
         <dependency>
-            <groupId>yb.ecp.fast.infra</groupId>
-            <artifactId>misc</artifactId>
-            <version>${fast-platform.version}</version>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-security</artifactId>
         </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-freemarker</artifactId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.session</groupId>
+            <artifactId>spring-session-core</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.session</groupId>
             <artifactId>spring-session-data-redis</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-core</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-pool2</artifactId>
+            <version>2.0</version>
         </dependency>
 
         <dependency>

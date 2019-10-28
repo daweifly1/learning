@@ -7,7 +7,6 @@ import com.netflix.zuul.context.RequestContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import yb.ecp.fast.infra.constants.ErrorCode;
 import yb.ecp.fast.infra.infra.ActionResult;
 
 import java.io.IOException;
@@ -27,7 +26,7 @@ public class ThirdUserInfoFilter extends ZuulFilter {
         if ((var2 = (Map) (var1 = RequestContext.getCurrentContext()).getRequest().getSession().getAttribute("wxMpUser")) != null) {
             ObjectMapper var3;
             (var3 = new ObjectMapper()).configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-            ActionResult var5 = new ActionResult(ErrorCode.Success.getCode(), ErrorCode.Success.getDesc(), var2);
+            ActionResult var5 = new ActionResult(0, "success", var2);
 
             try {
                 var1.setResponseBody(var3.writeValueAsString(var5));
