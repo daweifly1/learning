@@ -25,3 +25,117 @@ mysqldump -uroot -p --all-databases > sqlfile.sql
 
 
 查看对应java进程的每个线程的CPU占用率。通过命令：ps -Lp 15047  cu
+
+
+备件系统docker-compose
+
+version: '2'
+services:
+  parts-gw-dev:
+    container_name: parts-gw-dev-c1
+    image: '10.100.2.92:5000/parts/hcloud-gateway:1.0-SNAPSHOT-31-xgitparts-develop'
+    ports:
+      - "8650:8650"
+    environment:
+      TZ: 'Asia/Shanghai'
+      NACOS_HOST: 10.100.2.109
+      NACOS_PORT: 8848
+    restart: always
+    network_mode: host
+    depends_on:
+      - parts-user-dev
+      - parts-auth-dev
+      - tx-manager
+      - parts-rm
+      - xxl-job
+      - parts-basic
+
+  parts-user-dev:
+    container_name: parts-user-dev-c1
+    image: '10.100.2.92:5000/parts/hcloud-user:1.0-SNAPSHOT-66-xgitparts-develop'
+    environment:
+      TZ: 'Asia/Shanghai'
+      NACOS_HOST: 10.100.2.109
+      NACOS_PORT: 8848
+    restart: always
+    network_mode: host
+
+  parts-auth-dev:
+    container_name: parts-auth-dev-c1
+    image: '10.100.2.92:5000/parts/hcloud-auth:1.0-SNAPSHOT-36-xgitparts-develop'
+    ports:
+      - "8751:8751"
+    environment:
+      TZ: 'Asia/Shanghai'
+      NACOS_HOST: 10.100.2.109
+      NACOS_PORT: 8848
+    restart: always
+    network_mode: host
+
+  tx-manager:
+    container_name: tx-manager
+    image: '10.100.2.92:5000/f00lish/hcloud-tx-manager:1.0-SNAPSHOT-9'
+    environment:
+      TZ: 'Asia/Shanghai'
+      NACOS_HOST: 10.100.2.109
+      NACOS_PORT: 8848
+      TX_LCN_MANAGER_HOST: 10.100.2.109
+    restart: always
+    network_mode: host
+
+  parts-basic:
+    container_name: parts-basic-c1
+    image: '10.100.2.92:5000/parts/hcloud-basic:1.0-SNAPSHOT-40-xgitparts-develop'
+    environment:
+      TZ: 'Asia/Shanghai'
+      NACOS_HOST: 10.100.2.109
+      NACOS_PORT: 8848
+      TX_LCN_MANAGER_HOST: 10.100.2.109
+    restart: always
+    network_mode: host
+
+  parts-rm:
+    container_name: parts-rm-c1
+    image: '10.100.2.92:5000/parts/parts-rm-back-parent:1.0-SNAPSHOT-246-xgitparts-develop'
+    ports:
+      - "9002:9002"
+      - "10001:10001"
+    environment:
+      TZ: 'Asia/Shanghai'
+      NACOS_HOST: 10.100.2.109
+      NACOS_PORT: 8848
+      TX_LCN_MANAGER_HOST: 10.100.2.109
+      PARAMS: --spring.application.name=parts-rm-back-cdw
+    restart: always
+    depends_on:
+      - parts-rm-sysn
+
+  parts-rm-sysn:
+    container_name: parts-rm-sysn-c1
+    image: '10.100.2.92:5000/parts/parts-sysn-xgbj:6.0'
+    ports:
+      - "20100:20100"
+      - "10002:10002"
+    environment:
+      TZ: 'Asia/Shanghai'
+      NACOS_HOST: 10.100.2.109
+      NACOS_PORT: 8848
+      TX_LCN_MANAGER_HOST: 10.100.2.109
+      PARAMS: --spring.application.name=parts-rm-sysn-cdw
+    restart: always
+
+  xxl-job:
+    container_name: xxl-job-c1
+    image: '10.100.2.92:5000/f00lish/xxl-job:2.1.1-SNAPSHOT-5'
+    ports:
+      - "9099:8080"
+    environment:
+      TZ: 'Asia/Shanghai'
+      NACOS_HOST: 10.100.2.109
+      NACOS_PORT: 8848
+      TX_LCN_MANAGER_HOST: 10.100.2.109
+      PARAMS: --server.context-path=/ --spring.datasource.url=jdbc:mysql://10.100.2.135:3306/xxl_job_pro?Unicode=true&characterEncoding=UTF-8
+    restart: always
+
+
+
