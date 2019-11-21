@@ -1,0 +1,54 @@
+1.创建型模式
+a1.简单工厂模式
+a2.工厂模式
+a2.抽象工厂
+a3.单例模式    包含模式  volatile
+a4.创造者模式
+a5.原型模式
+
+
+
+2.行为型模式
+
+a1.策略模式   对比构造型模式中“桥梁模式”少了抽象层，桥梁模式耦合度更低，更复杂些。
+
+a2.观察者模式 
+          Guava 中的 EventBus  串行接收 并行接收
+		  
+a3.责任链模式  典型过滤器
+
+a4.模板方法
+
+a5.状态模式
+
+a6.备忘录模式
+
+a7.命令模式
+
+
+3.结构型模式
+a1.代理模式
+a2.适配器模式  对象适配 类继承   适配模式和代理的异同：代理是增强原来方法 适配是包装性质的增强
+a3.桥梁模式
+a4.装饰模式   茶  InputStream
+a5.门面模式
+a6.组合模式
+a7.Flyweight Pattern
+
+
+
+
+JDK中的设计模式
+
+静态工厂：代替构造函数实例化  Integer.valueOf  Class.forName
+
+工厂方法： Collection.iterator
+
+建造者模式: DocumentBuilder
+
+原型模式
+适配器模式  InputStream
+桥接模式  log的handler formatter
+
+
+
